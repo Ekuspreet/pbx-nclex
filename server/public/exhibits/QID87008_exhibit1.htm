@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Laboratory Reference Ranges</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Laboratory Test</th>
+<th>Reference Range</th>
+</tr>
+<tr>
+<td>PaCO<sub>2</sub></td>
+<td>35-45 mm Hg<br>(4.66–5.98 kPa)</td>
+</tr>
+<tr>
+<td>WBCs</td>
+<td>5000–10,000/mm<sup>3</sup><br>(5–10 × 10<sup>9</sup>/L)</td>
+</tr>
+<tr>
+<td>Activated PTT (aPTT)</td>
+<td>30–40 sec</td>
+</tr>
+<tr>
+<td>B-type natriuretic peptide (BNP)</td>
+<td>&lt;100 pg/mL<br>(&lt;100 ng/L)</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</body>
+</html>

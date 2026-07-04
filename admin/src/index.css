@@ -1,0 +1,32 @@
+@import "../../client/node_modules/tailwindcss/index.css";
+@import "../../client/node_modules/daisyui/daisyui.css";
+@import "../../client/node_modules/daisyui/themes.css";
+
+@layer base {
+  body {
+    font-family: "Google Sans", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid currentColor;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-size: 22px;
+    line-height: 1;
+  }
+}

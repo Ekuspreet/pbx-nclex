@@ -1,0 +1,236 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Google Sans", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+@plugin "daisyui" {
+  themes: all;
+}
+
+@plugin "daisyui/theme" {
+  name: "nord";
+  --color-primary-content: #ffffff;
+  --color-secondary-content: #ffffff;
+}
+
+@layer base {
+  body {
+    font-family: "Google Sans", Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  [x-cloak] {
+    display: none !important;
+  }
+
+  button,
+  a,
+  input,
+  select {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content;
+  }
+}
+
+@layer components {
+  .reference-html p {
+    @apply my-2;
+  }
+
+  .reference-html ul,
+  .reference-html ol {
+    @apply my-2 list-inside space-y-1;
+  }
+
+  .reference-html ul {
+    @apply list-disc;
+  }
+
+  .reference-html ol {
+    @apply list-decimal;
+  }
+
+  .reference-html img {
+    @apply max-w-full;
+  }
+
+  .reference-html table {
+    @apply w-full table-fixed border-collapse bg-white;
+  }
+
+  .reference-html th,
+  .reference-html td {
+    @apply border border-gray-300 p-3 text-left align-top;
+  }
+
+  .reference-html th {
+    @apply bg-slate-300 font-medium text-slate-900;
+  }
+
+  .reference-html td {
+    @apply bg-gray-100;
+  }
+
+  .passage-tabs-container {
+    @apply flex flex-col;
+  }
+
+  .nav-tabs {
+    @apply mt-2 flex gap-1;
+  }
+
+  .nav-tabs .nav-item {
+    @apply cursor-pointer border border-base-content px-1 py-2 font-medium;
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+  }
+
+  .nav-tabs .nav-item.active {
+    @apply border-2;
+  }
+
+  .tab-content {
+    @apply hidden;
+  }
+
+  .tab-content.active,
+  .tab-pane.active {
+    @apply block;
+  }
+
+  .answer-indicator {
+    @apply inline-block w-4 text-center font-bold;
+  }
+
+  .material-symbols-outlined {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .text-h1 {
+    @apply text-5xl leading-none font-extrabold tracking-normal md:text-7xl;
+  }
+
+  .text-h2 {
+    @apply text-4xl leading-tight font-extrabold tracking-normal md:text-5xl;
+  }
+
+  .text-h3 {
+    @apply text-2xl leading-tight font-extrabold tracking-normal md:text-3xl;
+  }
+
+  .text-h6 {
+    @apply text-base leading-snug font-bold tracking-normal;
+  }
+
+  .text-body {
+    @apply text-base leading-7;
+  }
+
+  .text-lead {
+    @apply text-lg leading-8;
+  }
+
+  .text-caption {
+    @apply text-sm leading-6;
+  }
+
+  .text-kicker {
+    @apply text-xs leading-tight font-black tracking-normal text-secondary uppercase;
+  }
+
+  .text-muted {
+    @apply text-base-content/70;
+  }
+
+  .text-inverse {
+    @apply text-neutral-content;
+  }
+
+  .text-inverse-muted {
+    @apply text-neutral-content/80;
+  }
+
+  .surface-page {
+    @apply bg-base-100 text-base-content;
+  }
+
+  .surface-muted {
+    @apply bg-base-200 text-base-content;
+  }
+
+  .surface-raised {
+    @apply border border-base-300 bg-base-100 shadow-sm;
+  }
+
+  .surface-dark {
+    @apply bg-neutral text-neutral-content;
+  }
+
+  .surface-sticky {
+    @apply sticky top-0 z-40 border-b border-base-300 bg-base-100/95 backdrop-blur-md;
+  }
+
+  .surface-overlay {
+    @apply bg-neutral/70;
+  }
+
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 md:px-8;
+  }
+
+  .container-readable {
+    @apply max-w-2xl;
+  }
+
+  .py-section {
+    @apply py-16 md:py-24;
+  }
+
+  .py-section-sm {
+    @apply py-12 md:py-16;
+  }
+
+  .p-md {
+    @apply p-5 md:p-6;
+  }
+
+  .p-lg {
+    @apply p-6 md:p-10;
+  }
+
+  .media-fill {
+    @apply absolute inset-0 h-full w-full object-cover;
+  }
+
+  .overlay-fill {
+    @apply absolute inset-0;
+  }
+
+  .border-t-subtle {
+    @apply border-t border-base-300;
+  }
+
+  .rule-list {
+    @apply grid gap-3;
+  }
+
+  .rule-list li {
+    @apply border-l-4 border-secondary pl-3 text-base-content;
+  }
+
+  .btn.btn-primary,
+  .btn.btn-primary:hover,
+  .btn.btn-primary:focus-visible {
+    color: var(--color-primary-content) !important;
+  }
+
+  .btn.btn-secondary,
+  .btn.btn-secondary:hover,
+  .btn.btn-secondary:focus-visible,
+  .btn.btn-outline.btn-secondary,
+  .btn.btn-outline.btn-secondary:hover,
+  .btn.btn-outline.btn-secondary:focus-visible {
+    color: var(--color-secondary-content) !important;
+  }
+
+}

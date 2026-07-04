@@ -1,0 +1,100 @@
+Core APIs					
+Environment	API / Pattern	Purpose	Minimal usage	Key notes	Official source
+JavaScript	animate()	Animate HTML, SVG, WebGL values, motion values, or JavaScript objects.	"import { animate } from ""motion""
+animate("".box"", { opacity: 1, y: 0 })"	Pass a selector, element, element collection, motion value, or object.	https://motion.dev/docs/animate
+JavaScript	Keyframes	Animate through multiple values for a property.	animate(".box", { x: [0, 100, 0] }, { duration: 1 })	Keyframes are arrays. Use times and ease arrays for per-segment control.	https://motion.dev/docs/animate
+JavaScript	Timeline sequence	Run multiple animation segments in sequence or at scheduled offsets.	"animate([
+  ["".panel"", { opacity: 1 }],
+  ["".item"", { x: [-20, 0] }, { at: ""-0.2"" }]
+])"	Each segment is [target, values, options].	https://motion.dev/docs/animate
+JavaScript	Spring transition	Create natural physics-based movement.	"animate("".box"", { x: 100 },
+  { type: ""spring"", stiffness: 300, damping: 24 })"	Physics springs commonly use stiffness, damping, and mass.	https://motion.dev/docs/animate
+JavaScript	stagger()	Offset the delay of animations across multiple elements.	"import { animate, stagger } from ""motion""
+animate("".item"", { opacity: 1 }, { delay: stagger(0.08) })"	Useful for lists, grids, menus, and loaders. Supports from: "first", "center", "last", or an index.	https://motion.dev/docs/stagger
+JavaScript	inView()	Run callbacks when an element enters or leaves a viewport.	"import { animate, inView } from ""motion""
+inView("".card"", el => animate(el, { opacity: 1 }))"	Options include root, margin, and amount. Returns a stop function.	https://motion.dev/docs/inview
+JavaScript	scroll()	Link animation progress or callbacks directly to scroll progress.	"import { animate, scroll } from ""motion""
+scroll(animate("".bar"", { scaleX: [0, 1] }))"	Use for progress indicators, parallax, and scroll-linked effects.	https://motion.dev/docs/scroll
+JavaScript	hover()	Detect reliable hover start/end gestures and filter emulated touch hover.	"import { animate, hover } from ""motion""
+hover("".btn"", el => {
+  animate(el, { scale: 1.05 })
+  return () => animate(el, { scale: 1 })
+})"	Callback may return a hover-end handler. Returns a cleanup function.	https://motion.dev/docs/hover
+JavaScript	press()	Detect pointer or keyboard press start/end gestures.	"import { animate, press } from ""motion""
+press("".btn"", el => {
+  animate(el, { scale: 0.96 })
+  return () => animate(el, { scale: 1 })
+})"	Includes keyboard support and secondary-pointer filtering.	https://motion.dev/docs/press
+React	<motion.*>	Declaratively animate React elements.	"import { motion } from ""motion/react""
+<motion.div animate={{ opacity: 1, y: 0 }} />"	Replace an HTML/SVG tag with its motion equivalent.	https://motion.dev/docs/react
+React	initial / animate / transition	Define an entry state, target state, and timing.	"<motion.div
+  initial={{ opacity: 0, y: 12 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.25 }}
+/>"	Set initial={false} to disable the initial enter animation.	https://motion.dev/docs/react-motion-component
+React	whileHover / whileTap	Animate temporarily while a pointer gesture is active.	"<motion.button
+  whileHover={{ scale: 1.04 }}
+  whileTap={{ scale: 0.97 }}
+/>"	Also available: whileFocus, whileDrag, and whileInView.	https://motion.dev/docs/react-motion-component
+React	<AnimatePresence>	Keep removed children mounted long enough to play exit animations.	"<AnimatePresence>
+  {open && <motion.div key=""modal"" exit={{ opacity: 0 }} />}
+</AnimatePresence>"	Exiting children need stable, unique keys.	https://motion.dev/docs/react-animate-presence
+React	layout / layoutId	Animate layout changes and shared-element transitions.	"<motion.div layout />
+<motion.div layoutId=""active-pill"" />"	layout can also be "position" or "size". Matching layoutId values create shared transitions.	https://motion.dev/docs/react-motion-component
+React	useScroll()	Expose page or element scroll position and progress as motion values.	"const { scrollYProgress } = useScroll()
+return <motion.div style={{ scaleX: scrollYProgress }} />"	Common outputs: scrollX, scrollY, scrollXProgress, scrollYProgress.	https://motion.dev/docs/react-use-scroll
+React	useMotionValue()	Create a manually controlled animation value without React re-renders.	"const x = useMotionValue(0)
+return <motion.div style={{ x }} />"	Use get(), set(), events, and composition with other motion-value hooks.	https://motion.dev/docs/react-motion-value
+React	useTransform()	Map one or more motion values into new values.	const opacity = useTransform(x, [-100, 0, 100], [0, 1, 0])	Supports transform functions and input/output value maps.	https://motion.dev/docs/react-use-transform
+React	useReducedMotion()	Adapt animation behavior to the user’s reduced-motion preference.	"const reduce = useReducedMotion()
+const y = reduce ? 0 : 20"	Prefer opacity or no movement when reduced motion is requested.	https://motion.dev/docs/react-use-reduced-motion
+
+
+
+
+Common Options and UI Patterns					
+					
+Common values and transition options					
+Category	Name	Description	Example	Notes	Official source
+Animated value	x / y	Independent translation transforms.	{ x: 100, y: -20 }	Prefer for movement instead of left/top.	https://motion.dev/docs/performance
+Animated value	scale	Scale an element uniformly or by axis.	{ scale: 1.05 }	Useful for hover, press, and emphasis.	https://motion.dev/docs/react-motion-component
+Animated value	rotate	Rotate an element.	{ rotate: 180 }	Numbers are generally interpreted as degrees.	https://motion.dev/docs/quick-start
+Animated value	opacity	Fade an element.	{ opacity: [0, 1] }	One of the safest properties for smooth animation.	https://motion.dev/docs/performance
+Animated value	transform	Animate a complete CSS transform string.	{ transform: "translateX(100px) scale(1.1)" }	Use when hardware acceleration is critical.	https://motion.dev/docs/performance
+Animated value	backgroundColor / color	Interpolate supported colors.	{ backgroundColor: ["#fff", "#111"] }	Can be more rendering-intensive than transform or opacity.	https://motion.dev/docs/animate
+Animated value	pathLength	Animate SVG line drawing.	{ pathLength: [0, 1] }	Apply to SVG path elements.	https://motion.dev/docs/animate
+Transition	duration	Animation duration in seconds.	{ duration: 0.3 }	Typical UI micro-interactions are brief.	https://motion.dev/docs/animate
+Transition	delay	Wait before starting, in seconds.	{ delay: 0.15 }	May also be supplied by stagger().	https://motion.dev/docs/animate
+Transition	ease	Tween timing curve.	{ ease: "easeOut" }	Named easing, cubic-bezier array, function, or per-keyframe array.	https://motion.dev/docs/animate
+Transition	type	Select tween, spring, or inertia behavior.	{ type: "spring" }	Hybrid animate supports "tween", "spring", and "inertia".	https://motion.dev/docs/animate
+Spring	stiffness	Spring strength; higher values move more abruptly.	{ stiffness: 300 }	Used with physics-based springs.	https://motion.dev/docs/animate
+Spring	damping	Opposing force that reduces oscillation.	{ damping: 24 }	A value of zero allows indefinite oscillation.	https://motion.dev/docs/animate
+Spring	mass	Mass of the moving object.	{ mass: 1 }	Higher values feel heavier and more sluggish.	https://motion.dev/docs/animate
+Spring	bounce	Bounciness for duration-based springs.	{ type: "spring", bounce: 0.25 }	Ranges from 0 to 1; overridden by physics parameters.	https://motion.dev/docs/animate
+Repeat	repeat	Number of additional repetitions.	{ repeat: Infinity }	Use Infinity for continuous animation.	https://motion.dev/docs/animate
+Repeat	repeatType	How repetitions behave.	{ repeat: 1, repeatType: "reverse" }	Values: "loop", "reverse", or "mirror".	https://motion.dev/docs/animate
+Keyframes	times	Position each keyframe within total progress.	{ times: [0, 0.3, 1] }	Array length must match the keyframe count.	https://motion.dev/docs/animate
+Viewport	margin / amount	Control when in-view detection triggers.	{ margin: "-10%", amount: 0.5 }	amount accepts "some", "all", or a number from 0 to 1.	https://motion.dev/docs/inview
+Practice	Prefer transform + opacity	Minimize layout and paint work for smoother animation.	Animate x/y/scale/rotate/opacity before width/top/height.	Test heavier properties on low-powered devices.	https://motion.dev/docs/performance
+					
+Reusable daisyUI patterns					
+Target	Pattern	Minimal usage	Guidance	Official source	Environment
+daisyUI button	React hover and press	"<motion.button className=""btn btn-primary""
+  whileHover={{ scale: 1.03 }}
+  whileTap={{ scale: 0.97 }}
+/>"	Subtle feedback for buttons; keep scale changes small.	https://motion.dev/docs/react-motion-component	React
+daisyUI card	React entrance	"<motion.div className=""card bg-base-200""
+  initial={{ opacity: 0, y: 16 }}
+  animate={{ opacity: 1, y: 0 }}
+/>"	Use for cards entering a page or filtered result list.	https://motion.dev/docs/react-motion-component	React
+daisyUI modal	React exit	"<AnimatePresence>
+  {open && <motion.div className=""modal modal-open""
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />}
+</AnimatePresence>"	AnimatePresence enables the closing transition before unmount.	https://motion.dev/docs/react-animate-presence	React
+daisyUI list	JavaScript stagger	"animate("".list-row"", { opacity: [0, 1], y: [8, 0] },
+  { delay: stagger(0.05) })"	Useful after rendering search results or navigation items.	https://motion.dev/docs/stagger	JavaScript
+daisyUI alert/card	JavaScript scroll reveal	"inView("".reveal"", el =>
+  animate(el, { opacity: [0, 1], y: [12, 0] }))"	Add a reveal class to the component wrapper.	https://motion.dev/docs/inview	JavaScript
+Page progress	React scroll-linked	"const { scrollYProgress } = useScroll()
+return <motion.div className=""fixed top-0 h-1 origin-left""
+  style={{ scaleX: scrollYProgress }} />"	Bind scaleX directly to page scroll progress.	https://motion.dev/docs/react-use-scroll	React

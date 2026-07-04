@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+
+.exhibit-container {
+    width: 100%;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-container input[type="radio"] {
+    display: none;
+}
+
+.exhibit-switches {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 10px auto;
+}
+
+.exhibit-switches label {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    font-size: 15px;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+#exhibit1:checked ~ .exhibit-switches label[for="exhibit1"],
+#exhibit2:checked ~ .exhibit-switches label[for="exhibit2"],
+#exhibit3:checked ~ .exhibit-switches label[for="exhibit3"] {
+    background-color: #a0bfe470;
+    font-weight: 700;
+}
+
+.exhibit-panel {
+    display: none;
+}
+
+#exhibit1:checked ~ .exhibit-content .panel-1,
+#exhibit2:checked ~ .exhibit-content .panel-2,
+#exhibit3:checked ~ .exhibit-content .panel-3 {
+    display: block;
+}
+
+@media screen and (max-width: 600px) {
+    .exhibit-switches label {
+        font-size: 14px;
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="exhibit-container">
+<input type="radio" name="exhibit" id="exhibit1" checked>
+<input type="radio" name="exhibit" id="exhibit2">
+<input type="radio" name="exhibit" id="exhibit3">
+
+<div class="exhibit-switches">
+<label for="exhibit1">Exhibit 1</label>
+<label for="exhibit2">Exhibit 2</label>
+<label for="exhibit3">Exhibit 3</label>
+</div>
+
+<div class="exhibit-content">
+
+<div class="exhibit-panel panel-1">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Progress Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>System</th>
+<th>Finding</th>
+</tr>
+<tr>
+<td>Wound</td>
+<td>Midline incision intact, clean, dry, and well-approximated.</td>
+</tr>
+<tr>
+<td>Genitourinary</td>
+<td>Foley catheter patent; draining clear, yellow urine.</td>
+</tr>
+<tr>
+<td>Respiratory</td>
+<td>Diminished breath sounds noted in bilateral bases.</td>
+</tr>
+<tr>
+<td>Gastrointestinal</td>
+<td>Bowel sounds absent in all four quadrants. Client denies passing flatus post-operatively.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-2">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">12-Hour Intake and Output Record</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Intake/Output</th>
+<th>Amount</th>
+</tr>
+<tr>
+<td>Oral intake</td>
+<td>170 mL</td>
+</tr>
+<tr>
+<td>Parenteral intake</td>
+<td>950 mL</td>
+</tr>
+<tr>
+<td>Urine output</td>
+<td>1170 mL</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-3">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Vital Signs</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Vital Sign</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>Temperature</td>
+<td>100.4&deg;F (38&deg;C)</td>
+</tr>
+<tr>
+<td>Blood pressure</td>
+<td>97/69 mm Hg</td>
+</tr>
+<tr>
+<td>Heart rate</td>
+<td>124/min</td>
+</tr>
+<tr>
+<td>Respirations</td>
+<td>20/min</td>
+</tr>
+<tr>
+<td>SpO<sub>2</sub></td>
+<td>94% on room air</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>

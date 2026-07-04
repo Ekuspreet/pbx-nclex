@@ -1,0 +1,2 @@
+Google Sans,
+Inter Tight

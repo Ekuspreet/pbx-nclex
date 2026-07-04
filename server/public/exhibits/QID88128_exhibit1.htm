@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 560px;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+.exhibit-switches {
+    width: 100%;
+    max-width: 560px;
+    margin: 10px auto;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-switches input {
+    display: none;
+}
+
+.exhibit-labels {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.exhibit-labels label {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    background-color: #ffffff;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+#exhibit1:checked ~ .exhibit-labels label[for="exhibit1"],
+#exhibit2:checked ~ .exhibit-labels label[for="exhibit2"] {
+    background-color: #a0bfe470;
+    font-weight: 700;
+}
+
+.exhibit-content {
+    display: none;
+}
+
+#exhibit1:checked ~ .exhibit-one,
+#exhibit2:checked ~ .exhibit-two {
+    display: block;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+
+    .exhibit-labels label {
+        font-size: 14px;
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="exhibit-switches">
+<input type="radio" id="exhibit1" name="exhibit" checked>
+<input type="radio" id="exhibit2" name="exhibit">
+
+<div class="exhibit-labels">
+<label for="exhibit1">Exhibit 1</label>
+<label for="exhibit2">Exhibit 2</label>
+</div>
+
+<div class="exhibit-content exhibit-one">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Vital Signs</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Assessment</th>
+<th>Finding</th>
+</tr>
+
+<tr>
+<td><strong>Temperature</strong></td>
+<td>98.8 F (37.1 C)</td>
+</tr>
+
+<tr>
+<td><strong>Blood pressure</strong></td>
+<td>141/82 mm Hg</td>
+</tr>
+
+<tr>
+<td><strong>Heart rate</strong></td>
+<td>98/min</td>
+</tr>
+
+<tr>
+<td><strong>Respirations</strong></td>
+<td>28/min</td>
+</tr>
+
+<tr>
+<td><strong>SpO<sub>2</sub></strong></td>
+<td>97% on 2 L/min via nasal cannula</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-content exhibit-two">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Progress Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Note</th>
+</tr>
+
+<tr>
+<td><strong>1140</strong></td>
+<td>Alert and oriented to time, place, and person. Breath sounds diminished bilaterally.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+</body>
+</html>

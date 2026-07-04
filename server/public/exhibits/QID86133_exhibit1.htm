@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+
+.exhibit-container {
+    width: 100%;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-controls {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 10px auto;
+}
+
+.exhibit-controls input {
+    display: none;
+}
+
+.exhibit-controls label {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+#exhibit1:checked ~ .exhibit-controls label[for="exhibit1"],
+#exhibit2:checked ~ .exhibit-controls label[for="exhibit2"],
+#exhibit3:checked ~ .exhibit-controls label[for="exhibit3"] {
+    background-color: #a0bfe470;
+    font-weight: 700;
+}
+
+.exhibit-panel {
+    display: none;
+}
+
+#exhibit1:checked ~ .exhibit-content .panel-1,
+#exhibit2:checked ~ .exhibit-content .panel-2,
+#exhibit3:checked ~ .exhibit-content .panel-3 {
+    display: block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="exhibit-container">
+<input type="radio" name="exhibit" id="exhibit1" checked>
+<input type="radio" name="exhibit" id="exhibit2">
+<input type="radio" name="exhibit" id="exhibit3">
+
+<div class="exhibit-controls">
+<label for="exhibit1">Exhibit 1</label>
+<label for="exhibit2">Exhibit 2</label>
+<label for="exhibit3">Exhibit 3</label>
+</div>
+
+<div class="exhibit-content">
+
+<div class="exhibit-panel panel-1">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="4">Vital Signs</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Vital Sign</th>
+<th>Admission</th>
+<th>1 Hour</th>
+<th>2 Hours</th>
+</tr>
+<tr>
+<td>Temperature</td>
+<td>97.9&deg;F (36.6&deg;C)</td>
+<td>99.4&deg;F (37.4&deg;C)</td>
+<td>102.1&deg;F (38.9&deg;C)</td>
+</tr>
+<tr>
+<td>Blood pressure</td>
+<td>118/78 mm Hg</td>
+<td>137/87 mm Hg</td>
+<td>168/106 mm Hg</td>
+</tr>
+<tr>
+<td>Heart rate</td>
+<td>82/min</td>
+<td>118/min</td>
+<td>142/min</td>
+</tr>
+<tr>
+<td>Respirations</td>
+<td>12/min</td>
+<td>18/min</td>
+<td>24/min</td>
+</tr>
+<tr>
+<td>SpO<sub>2</sub></td>
+<td>97% on room air</td>
+<td>95% on room air</td>
+<td>96% on room air</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-2">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Progress Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Note</th>
+</tr>
+<tr>
+<td><strong>Admission</strong></td>
+<td>Client reports palpitations and tremors &amp; diagnosed with Graves disease.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-3">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="3">Laboratory Results</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Laboratory Test</th>
+<th>Reference Range</th>
+<th>Result</th>
+</tr>
+<tr>
+<td>TSH</td>
+<td>0.3-5 &mu;U/mL<br>(0.3-5 mU/L)</td>
+<td>0.08 &mu;U/mL<br>(0.08 mU/L)</td>
+</tr>
+<tr>
+<td>T<sub>4</sub> (free)</td>
+<td>0.8-2.8 ng/dL<br>(10-36 pmol/L)</td>
+<td>5.1 ng/dL<br>(65 pmol/L)</td>
+</tr>
+<tr>
+<td>T<sub>3</sub> (total)</td>
+<td>20-50 years: 70-205 ng/dL<br>(20-50 years: 1.2-3.4 nmol/L)<br><br>&gt;50 years: 40-180 ng/dL<br>(&gt;50 years: 0.6-2.8 nmol/L)</td>
+<td>312 ng/dL<br>(4.8 nmol/L)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>

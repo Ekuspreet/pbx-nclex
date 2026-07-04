@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Chessboard pattern */
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+
+.button-wrapper {
+    width: 100%;
+    max-width: 100%;
+    text-align: center;
+    margin: 10px auto;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-button {
+    background-color: #a0bfe470;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    margin: 3px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.exhibit-button.active {
+    background-color: #e0ecfe8e;
+    font-weight: 700;
+}
+
+.exhibit-section {
+    display: none;
+}
+
+.exhibit-section.active {
+    display: block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="button-wrapper">
+<button class="exhibit-button active" onclick="showExhibit('assessment', this)">Vitals</button>
+<button class="exhibit-button" onclick="showExhibit('labs', this)">Lab Results</button>
+<button class="exhibit-button" onclick="showExhibit('mar', this)">Medicine</button>
+</div>
+
+<div id="assessment" class="exhibit-section active">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="3">Assessment Data</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Assessment</th>
+<th>0600 Monday</th>
+<th>0600 Tuesday</th>
+</tr>
+<tr>
+<td><strong>Blood pressure</strong></td>
+<td>142/82 mm Hg</td>
+<td>94/58 mm Hg</td>
+</tr>
+<tr>
+<td><strong>24-hour intake/output</strong></td>
+<td>1200/2800 mL</td>
+<td>900/3100 mL</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="labs" class="exhibit-section">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="4">Laboratory Results</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Laboratory Test</th>
+<th>Reference Range</th>
+<th>0600 Monday</th>
+<th>0600 Tuesday</th>
+</tr>
+<tr>
+<td><strong>Sodium</strong></td>
+<td>136-145 mEq/L<br>(136-145 mmol/L)</td>
+<td>139 mEq/L<br>(139 mmol/L)</td>
+<td>151 mEq/L<br>(151 mmol/L)</td>
+</tr>
+<tr>
+<td><strong>Potassium</strong></td>
+<td>3.5-5.0 mEq/L<br>(3.5-5.0 mmol/L)</td>
+<td>4.3 mEq/L<br>(4.3 mmol/L)</td>
+<td>3.4 mEq/L<br>(3.4 mmol/L)</td>
+</tr>
+<tr>
+<td><strong>Glucose, fasting</strong></td>
+<td>70-110 mg/dL<br>(3.9-6.1 mmol/L)</td>
+<td>96 mg/dL<br>(5.3 mmol/L)</td>
+<td>102 mg/dL<br>(5.7 mmol/L)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="mar" class="exhibit-section">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Medication Administration Record</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td colspan="2"><strong>Allergies:</strong> None</td>
+</tr>
+<tr>
+<th>Medication</th>
+<th>Tuesday</th>
+</tr>
+<tr>
+<td><strong>Ceftriaxone:</strong> 1 g IV, once daily</td>
+<td>0700</td>
+</tr>
+<tr>
+<td><strong>Potassium chloride:</strong> 20 mEq orally, once daily</td>
+<td>0700</td>
+</tr>
+<tr>
+<td><strong>Bumetanide:</strong> 1 mg IVP, once daily</td>
+<td>0700</td>
+</tr>
+<tr>
+<td><strong>Metformin:</strong> 500 mg orally, twice daily with meals</td>
+<td>0700-1700</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<script>
+function showExhibit(sectionId, buttonElement) {
+    var sections = document.querySelectorAll('.exhibit-section');
+    var buttons = document.querySelectorAll('.exhibit-button');
+
+    sections.forEach(function(section) {
+        section.classList.remove('active');
+    });
+
+    buttons.forEach(function(button) {
+        button.classList.remove('active');
+    });
+
+    document.getElementById(sectionId).classList.add('active');
+    buttonElement.classList.add('active');
+}
+</script>
+
+</body>
+</html>

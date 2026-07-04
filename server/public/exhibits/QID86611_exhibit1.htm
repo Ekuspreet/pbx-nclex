@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 560px;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Chessboard pattern */
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Progress Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Note</th>
+</tr>
+<tr>
+<td>0935</td>
+<td>Client found sitting on floor near bathroom doorway. Client states, &ldquo;I got up to reach my slippers, lost my balance, and bumped the back of my head on the wall.&rdquo; Client is alert and oriented to person, place, time, and situation. Denies headache, dizziness, nausea, or visual changes. No bleeding or visible injury noted. Assisted back to bed. Neurologic vital signs within expected limits. Call light placed within reach; client instructed to request assistance before getting out of bed. __________RN</td>
+</tr>
+<tr>
+<td>0950</td>
+<td>Health care provider notified of unwitnessed fall with reported head impact. Prescription received for neurologic assessments every 15 minutes and CT scan of head without contrast. __________RN</td>
+</tr>
+<tr>
+<td>1015</td>
+<td>Neurologic assessment unchanged. Client transported to CT scan by stretcher. Variance report completed and filed according to facility policy. __________RN</td>
+</tr>
+<tr>
+<td>1050</td>
+<td>Client returned from CT scan. Neurologic status remains unchanged. Client denies pain, dizziness, or nausea. Fall-prevention instructions reinforced, and client verbalized understanding. Bed alarm activated. Will continue to monitor. __________RN</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</body>
+</html>

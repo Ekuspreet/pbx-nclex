@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Assessment Data</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Assessment</th>
+<th>Finding</th>
+</tr>
+<tr>
+<td>Temperature</td>
+<td>99.3&deg;F (37.3&deg;C)</td>
+</tr>
+<tr>
+<td>Blood pressure</td>
+<td>79/38 mm Hg</td>
+</tr>
+<tr>
+<td>Heart rate</td>
+<td>124/min</td>
+</tr>
+<tr>
+<td>Respirations</td>
+<td>22/min</td>
+</tr>
+<tr>
+<td>SpO<sub>2</sub></td>
+<td>91% on room air</td>
+</tr>
+<tr>
+<td>Central venous pressure (CVP)</td>
+<td>2 mm Hg</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</body>
+</html>

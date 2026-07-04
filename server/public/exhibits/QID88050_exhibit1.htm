@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 500px;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Chessboard pattern */
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Medication Administration Record</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Medication</th>
+<th>Schedule</th>
+</tr>
+<tr>
+<td>Nitroglycerin tablets: 0.4 mg, sublingual, every 5 minutes PRN for chest pain, may repeat for 2 additional doses</td>
+<td>PRN</td>
+</tr>
+<tr>
+<td>Atenolol tablet: 25 mg, PO, daily</td>
+<td>0900</td>
+</tr>
+<tr>
+<td>Morphine sulfate: 2 mg, IV push, every 4 hours PRN for severe chest pain</td>
+<td>PRN</td>
+</tr>
+<tr>
+<td>Aspirin tablet: 81 mg, PO, daily</td>
+<td>0900</td>
+</tr>
+<tr>
+<td>Nitroglycerin patch: 0.2 mg/hr, transdermal, daily, remove after 12 hours</td>
+<td>0900</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</body>
+</html>

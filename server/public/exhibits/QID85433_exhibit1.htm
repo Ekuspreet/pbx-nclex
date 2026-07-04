@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+
+.exhibit-container {
+    width: 100%;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-container input[type="radio"] {
+    display: none;
+}
+
+.exhibit-switches {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 10px auto;
+}
+
+.exhibit-switches label {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    font-size: 15px;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+#exhibit1:checked ~ .exhibit-switches label[for="exhibit1"],
+#exhibit2:checked ~ .exhibit-switches label[for="exhibit2"],
+#exhibit3:checked ~ .exhibit-switches label[for="exhibit3"] {
+    background-color: #a0bfe470;
+    font-weight: 700;
+}
+
+.exhibit-panel {
+    display: none;
+}
+
+#exhibit1:checked ~ .exhibit-content .panel-1,
+#exhibit2:checked ~ .exhibit-content .panel-2,
+#exhibit3:checked ~ .exhibit-content .panel-3 {
+    display: block;
+}
+
+@media screen and (max-width: 600px) {
+    .exhibit-switches label {
+        font-size: 14px;
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="exhibit-container">
+<input type="radio" name="exhibit" id="exhibit1" checked>
+<input type="radio" name="exhibit" id="exhibit2">
+<input type="radio" name="exhibit" id="exhibit3">
+
+<div class="exhibit-switches">
+<label for="exhibit1">Exhibit 1</label>
+<label for="exhibit2">Exhibit 2</label>
+<label for="exhibit3">Exhibit 3</label>
+</div>
+
+<div class="exhibit-content">
+
+<div class="exhibit-panel panel-1">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="3">Clinical Data</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Vital Sign</th>
+<th>Value</th>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Blood pressure</td>
+<td>161/88 mm Hg</td>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Heart rate</td>
+<td>66/min</td>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Respirations</td>
+<td>16/min</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-2">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="4">Lab Results</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Laboratory Test</th>
+<th>Reference Range</th>
+<th>Result</th>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Glucose</td>
+<td>74–106 mg/dL<br>(4.1–5.9 mmol/L)</td>
+<td>281 mg/dL<br>(15.6 mmol/L)</td>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Potassium</td>
+<td>3.5-5.0 mEq/L<br>(3.5-5.0 mmol/L)</td>
+<td>3.9 mEq/L<br>(3.9 mmol/L)</td>
+</tr>
+<tr>
+<td><strong>1140</strong></td>
+<td>Sodium</td>
+<td>136-145 mEq/L<br>(136-145 mmol/L)</td>
+<td>141 mEq/L<br>(141 mmol/L)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="exhibit-panel panel-3">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Medication Administration Record</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td colspan="2"><strong>Allergies:</strong> Not known</td>
+</tr>
+<tr>
+<th>Medication</th>
+<th>Time</th>
+</tr>
+<tr>
+<td>Glargine: 9 units subcutaneously twice daily</td>
+<td>1210, 0010</td>
+</tr>
+<tr>
+<td>Hydrochlorothiazide: 50 mg PO daily</td>
+<td>1210</td>
+</tr>
+<tr>
+<td>Spironolactone: 25 mg PO daily</td>
+<td>1210</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Chessboard pattern */
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Medication Administration Record</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td colspan="2"><strong>Allergies:</strong> No known drug allergies</td>
+</tr>
+<tr>
+<th>Medication</th>
+<th>Time</th>
+</tr>
+<tr>
+<td><strong>Fluphenazine:</strong> 5 mg PO, twice daily</td>
+<td>0900, 2100</td>
+</tr>
+<tr>
+<td><strong>Lisinopril:</strong> 10 mg PO, daily</td>
+<td>0900</td>
+</tr>
+<tr>
+<td><strong>Famotidine:</strong> 20 mg PO, twice daily</td>
+<td>0900, 2100</td>
+</tr>
+<tr>
+<td><strong>Ibuprofen:</strong> 400 mg PO, PRN for pain or fever</td>
+<td>Every 6 hours</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+</body>
+</html>

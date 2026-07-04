@@ -1,0 +1,6 @@
+export { brand, navigation } from './navigation.js'
+export { hero } from './hero.js'
+export { features } from './features.js'
+export { pricing } from './pricing.js'
+export { callToAction } from './callToAction.js'
+export { footer } from './footer.js'

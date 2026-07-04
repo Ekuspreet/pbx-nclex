@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Responsive Medical Table</title>
+
+<style>
+.table-wrapper {
+    width: 100%;
+    max-width: 500px;
+    overflow-x: auto;
+    margin: 10px auto;
+}
+
+.med-table {
+    border-collapse: collapse;
+    width: auto;
+    max-width: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 10px auto;
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.med-table th {
+    background-color: #a0bfe470;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    font-weight: 700;
+    vertical-align: top;
+}
+
+.med-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* Chessboard pattern */
+.med-table tbody tr:nth-child(odd) td:nth-child(odd),
+.med-table tbody tr:nth-child(even) td:nth-child(even) {
+    background-color: #e0ecfe8e;
+}
+
+.med-table tbody tr:nth-child(odd) td:nth-child(even),
+.med-table tbody tr:nth-child(even) td:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+@media screen and (max-width: 600px) {
+    .med-table {
+        font-size: 14px;
+    }
+
+    .med-table th,
+    .med-table td {
+        padding: 5px 7px;
+    }
+}
+
+.exhibit-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 10px auto;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-buttons button {
+    background-color: #a0bfe470;
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.exhibit-buttons button.active {
+    font-weight: 700;
+}
+
+.exhibit-panel {
+    display: none;
+}
+
+.exhibit-panel.active {
+    display: block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="exhibit-buttons">
+<button class="active" onclick="showExhibit('vitals', this)">Vital Signs</button>
+<button onclick="showExhibit('notes', this)">Progress Notes</button>
+</div>
+
+<div id="vitals" class="exhibit-panel active">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Vital Signs</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Vital Sign</th>
+<th>Result</th>
+</tr>
+<tr>
+<td>Temperature</td>
+<td>100.3 F (37.9 C)</td>
+</tr>
+<tr>
+<td>Blood pressure</td>
+<td>129/78 mm Hg</td>
+</tr>
+<tr>
+<td>Heart rate</td>
+<td>114/min</td>
+</tr>
+<tr>
+<td>Respirations</td>
+<td>16/min</td>
+</tr>
+<tr>
+<td>SpO2</td>
+<td>98%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div id="notes" class="exhibit-panel">
+<div class="table-wrapper">
+<table class="med-table">
+<thead>
+<tr>
+<th colspan="2">Progress Notes</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<th>Time</th>
+<th>Note</th>
+</tr>
+<tr>
+<td>1300</td>
+<td>Small amount of foul-smelling lochia rubra noted. Fundus +1 above umbilicus with moderate tenderness to palpation. Perineal care given. _____ RN</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<script>
+function showExhibit(id, button) {
+    var panels = document.querySelectorAll('.exhibit-panel');
+    var buttons = document.querySelectorAll('.exhibit-buttons button');
+
+    panels.forEach(function(panel) {
+        panel.classList.remove('active');
+    });
+
+    buttons.forEach(function(btn) {
+        btn.classList.remove('active');
+    });
+
+    document.getElementById(id).classList.add('active');
+    button.classList.add('active');
+}
+</script>
+
+</body>
+</html>
