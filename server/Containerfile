@@ -1,0 +1,18 @@
+FROM docker.io/library/node:22-bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN chmod +x ./container-entrypoint.sh
+
+EXPOSE 5000
+
+ENTRYPOINT ["./container-entrypoint.sh"]
+CMD ["npm", "start"]
