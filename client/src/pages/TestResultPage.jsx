@@ -22,9 +22,9 @@ function BreakdownTable({ rows = [], title }) {
             <tr>
               <th>Name</th>
               <th>Total</th>
+              <th>Attempted</th>
               <th>Correct</th>
               <th>Incorrect</th>
-              <th>Unanswered</th>
             </tr>
           </thead>
           <tbody>
@@ -32,9 +32,9 @@ function BreakdownTable({ rows = [], title }) {
               <tr key={row.key}>
                 <td>{row.label}</td>
                 <td>{row.total}</td>
+                <td>{row.attempted ?? row.total - row.unanswered}</td>
                 <td>{row.correct}</td>
                 <td>{row.incorrect}</td>
-                <td>{row.unanswered}</td>
               </tr>
             ))}
           </tbody>
@@ -60,6 +60,7 @@ function TestResultPage() {
   }
 
   const { scoreSummary } = state.data
+  const attempted = scoreSummary.answered ?? scoreSummary.total - scoreSummary.unanswered
 
   return (
     <main className="surface-muted min-h-screen py-10" data-theme="nord">
@@ -73,10 +74,10 @@ function TestResultPage() {
         </div>
 
         <section className="grid gap-4 md:grid-cols-4">
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Score</p><strong className="text-h3">{scoreSummary.percentage}%</strong></div></article>
+          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Total</p><strong className="text-h3">{scoreSummary.total}</strong></div></article>
+          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Attempted</p><strong className="text-h3">{attempted}</strong></div></article>
           <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Correct</p><strong className="text-h3">{scoreSummary.correct}</strong></div></article>
           <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Incorrect</p><strong className="text-h3">{scoreSummary.incorrect}</strong></div></article>
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Unanswered</p><strong className="text-h3">{scoreSummary.unanswered}</strong></div></article>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">

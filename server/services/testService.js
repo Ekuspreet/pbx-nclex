@@ -293,6 +293,7 @@ function createBreakdown(questionRows, testQuestionRows, dimension) {
             key: label,
             label,
             total: 0,
+            attempted: 0,
             correct: 0,
             incorrect: 0,
             unanswered: 0,
@@ -302,10 +303,14 @@ function createBreakdown(questionRows, testQuestionRows, dimension) {
 
         if (!row.answered) {
             current.unanswered += 1;
-        } else if (row.isCorrect) {
-            current.correct += 1;
         } else {
-            current.incorrect += 1;
+            current.attempted += 1;
+
+            if (row.isCorrect) {
+                current.correct += 1;
+            } else {
+                current.incorrect += 1;
+            }
         }
 
         groups.set(label, current);
@@ -330,6 +335,85 @@ function buildScoreSummary(questionRows, testQuestionRows) {
         percentage: total > 0 ? Math.round((correct / total) * 100) : 0,
         subjects: createBreakdown(questionRows, testQuestionRows, 'subject'),
         systems: createBreakdown(questionRows, testQuestionRows, 'system'),
+    };
+}
+
+function getAttemptTimestamp(row) {
+    const value = row.checkedAt || row.updatedAt || row.createdAt;
+    const time = value ? new Date(value).getTime() : 0;
+
+    return Number.isNaN(time) ? 0 : time;
+}
+
+function getLatestAnsweredAttempts(answeredRows) {
+    const attempts = new Map();
+
+    for (const row of answeredRows) {
+        const current = attempts.get(row.questionId);
+
+        if (!current || getAttemptTimestamp(row) >= getAttemptTimestamp(current)) {
+            attempts.set(row.questionId, row);
+        }
+    }
+
+    return Array.from(attempts.values());
+}
+
+function getDashboardTaxonomyValue(question, dimension) {
+    return String(question?.[dimension] || 'Uncategorized').trim() || 'Uncategorized';
+}
+
+function isDashboardAttemptCorrect(row, question) {
+    if (!question) {
+        return row.isCorrect === true;
+    }
+
+    return isAnswerCorrect(question, row.answer);
+}
+
+function buildLatestAttemptStats(latestAttemptRows, questionRows) {
+    const questionMap = new Map(questionRows.map((question) => [question.id, question]));
+    const byDimension = new Map();
+    let correctQuestions = 0;
+
+    for (const row of latestAttemptRows) {
+        const question = questionMap.get(row.questionId);
+        const isCorrect = isDashboardAttemptCorrect(row, question);
+
+        if (isCorrect) {
+            correctQuestions += 1;
+        }
+
+        for (const dimension of ['subject', 'system']) {
+            const label = getDashboardTaxonomyValue(question, dimension);
+            const key = label;
+            const mapKey = `${dimension}:${key}`;
+            const current = byDimension.get(mapKey) || {
+                dimension,
+                key,
+                label,
+                attemptedQuestions: 0,
+                correctQuestions: 0,
+                incorrectQuestions: 0,
+            };
+
+            current.attemptedQuestions += 1;
+
+            if (isCorrect) {
+                current.correctQuestions += 1;
+            } else {
+                current.incorrectQuestions += 1;
+            }
+
+            byDimension.set(mapKey, current);
+        }
+    }
+
+    return {
+        attemptedQuestions: latestAttemptRows.length,
+        correctQuestions,
+        incorrectQuestions: latestAttemptRows.length - correctQuestions,
+        byDimension,
     };
 }
 
@@ -425,7 +509,8 @@ async function getDashboard(userId) {
             ));
     }
 
-    const attemptedQuestionIds = Array.from(new Set(answeredRows.map((row) => row.questionId)));
+    const latestAttemptRows = getLatestAnsweredAttempts(answeredRows);
+    const attemptedQuestionIds = latestAttemptRows.map((row) => row.questionId);
     let attemptedQuestionRows = [];
 
     if (attemptedQuestionIds.length > 0) {
@@ -443,19 +528,28 @@ async function getDashboard(userId) {
 
     const attemptedStats = buildStatsFromQuestions(attemptedQuestionRows);
     const attemptedMap = new Map(attemptedStats.map((stat) => [`${stat.dimension}:${stat.key}`, stat.totalQuestions]));
+    const latestAttemptStats = buildLatestAttemptStats(latestAttemptRows, attemptedQuestionRows);
     const toRows = (dimension) => storedStats
         .filter((stat) => stat.dimension === dimension)
         .sort((a, b) => a.label.localeCompare(b.label))
-        .map((stat) => ({
-            key: stat.key,
-            label: stat.label,
-            totalQuestions: stat.totalQuestions,
-            attemptedQuestions: attemptedMap.get(`${dimension}:${stat.key}`) || 0,
-        }));
+        .map((stat) => {
+            const attemptStat = latestAttemptStats.byDimension.get(`${dimension}:${stat.key}`);
+
+            return {
+                key: stat.key,
+                label: stat.label,
+                totalQuestions: stat.totalQuestions,
+                attemptedQuestions: attemptedMap.get(`${dimension}:${stat.key}`) || 0,
+                correctQuestions: attemptStat?.correctQuestions || 0,
+                incorrectQuestions: attemptStat?.incorrectQuestions || 0,
+            };
+        });
 
     return {
         totalQuestions,
-        attemptedQuestions: attemptedQuestionIds.length,
+        attemptedQuestions: latestAttemptStats.attemptedQuestions,
+        correctQuestions: latestAttemptStats.correctQuestions,
+        incorrectQuestions: latestAttemptStats.incorrectQuestions,
         subjects: toRows('subject'),
         systems: toRows('system'),
         tests: userTests.slice(0, 8),

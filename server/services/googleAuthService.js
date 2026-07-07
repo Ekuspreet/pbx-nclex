@@ -26,15 +26,28 @@ function createGoogleAuthError() {
     return error;
 }
 
+function logGoogleVerificationFailure(error) {
+    if (env.NODE_ENV === 'production') {
+        return;
+    }
+
+    console.warn('Google credential verification failed.', {
+        code: error.code,
+        message: error.message,
+    });
+}
+
 async function verifyGoogleCredential(credential) {
     let ticket;
+    const client = getGoogleClient();
 
     try {
-        ticket = await getGoogleClient().verifyIdToken({
+        ticket = await client.verifyIdToken({
             idToken: credential,
             audience: env.GOOGLE_CLIENT_ID,
         });
     } catch (error) {
+        logGoogleVerificationFailure(error);
         throw createGoogleAuthError();
     }
 

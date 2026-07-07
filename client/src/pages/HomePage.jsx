@@ -7,13 +7,16 @@ import {
   deleteHighlight,
   deleteNote,
   getDashboard,
+  getFeedback,
   getQuestionStats,
   listFeedback,
   listHighlights,
   listNotes,
   listTests,
+  replyFeedback,
 } from '../services/studyAdapter.js'
 import BrandLogo from '../ui/landing/BrandLogo.jsx'
+import QuestionPreviewModal from '../ui/questionnaire/QuestionPreviewModal.jsx'
 
 const navGroups = [
   {
@@ -105,6 +108,107 @@ function StatCard({ label, value, icon }) {
   )
 }
 
+function asCount(value) {
+  return Number.isFinite(Number(value)) ? Number(value) : 0
+}
+
+function getPercent(value, total) {
+  if (total <= 0) return '0%'
+  return `${Math.round((value / total) * 100)}%`
+}
+
+function PieChartCard({ title, total, segments, centerLabel, centerCaption }) {
+  const activeSegments = segments.filter((segment) => segment.value > 0)
+  let offset = 0
+
+  return (
+    <article className="surface-raised rounded-lg border p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-h6">{title}</h2>
+        <span className="badge badge-outline">{total}</span>
+      </div>
+      <div className="grid items-center gap-4 sm:grid-cols-[11rem_1fr]">
+        <div className="relative mx-auto size-44">
+          <svg aria-label={title} className="size-44 -rotate-90" role="img" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" fill="none" r="15.9155" stroke="currentColor" strokeWidth="7" className="text-base-300" />
+            {activeSegments.map((segment) => {
+              const percent = total > 0 ? (segment.value / total) * 100 : 0
+              const dashOffset = -offset
+              offset += percent
+
+              return (
+                <circle
+                  cx="20"
+                  cy="20"
+                  fill="none"
+                  key={segment.label}
+                  pathLength="100"
+                  r="15.9155"
+                  stroke={segment.color}
+                  strokeDasharray={`${percent} ${100 - percent}`}
+                  strokeDashoffset={dashOffset}
+                  strokeWidth="7"
+                />
+              )
+            })}
+          </svg>
+          <div className="absolute inset-0 grid place-items-center text-center">
+            <div>
+              <strong className="text-h3 block">{centerLabel}</strong>
+              <span className="text-caption text-muted">{centerCaption}</span>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {segments.map((segment) => (
+            <div className="flex items-center justify-between gap-3" key={segment.label}>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+                <span className="truncate text-sm font-bold">{segment.label}</span>
+              </div>
+              <span className="text-sm text-muted">{segment.value} / {getPercent(segment.value, total)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function DashboardCharts({ data }) {
+  const totalQuestions = asCount(data.totalQuestions)
+  const attemptedQuestions = asCount(data.attemptedQuestions)
+  const correctQuestions = asCount(data.correctQuestions)
+  const incorrectQuestions = asCount(data.incorrectQuestions)
+  const unattemptedQuestions = Math.max(totalQuestions - attemptedQuestions, 0)
+  const resultTotal = correctQuestions + incorrectQuestions
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <PieChartCard
+        centerCaption="attempted"
+        centerLabel={getPercent(attemptedQuestions, totalQuestions)}
+        segments={[
+          { label: 'Attempted', value: attemptedQuestions, color: '#2563eb' },
+          { label: 'Unattempted', value: unattemptedQuestions, color: '#94a3b8' },
+        ]}
+        title="Question Coverage"
+        total={totalQuestions}
+      />
+      <PieChartCard
+        centerCaption="correct"
+        centerLabel={getPercent(correctQuestions, resultTotal)}
+        segments={[
+          { label: 'Correct', value: correctQuestions, color: '#16a34a' },
+          { label: 'Incorrect', value: incorrectQuestions, color: '#dc2626' },
+        ]}
+        title="Latest Attempt Results"
+        total={resultTotal}
+      />
+    </section>
+  )
+}
+
 function DashboardPageContent() {
   const [state, setState] = useState({ loading: true, error: '', data: null })
 
@@ -131,11 +235,14 @@ function DashboardPageContent() {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard icon="quiz" label="Total questions" value={data.totalQuestions} />
         <StatCard icon="task_alt" label="Attempted" value={data.attemptedQuestions} />
-        <StatCard icon="assignment" label="Recent tests" value={data.tests?.length || 0} />
+        <StatCard icon="check_circle" label="Correct" value={data.correctQuestions} />
+        <StatCard icon="cancel" label="Incorrect" value={data.incorrectQuestions} />
       </div>
+
+      <DashboardCharts data={data} />
 
       <section className="grid gap-4 lg:grid-cols-2">
         <StatTable rows={data.subjects} title="Subjects" />
@@ -187,15 +294,17 @@ function DashboardPageContent() {
 
 function StatTable({ rows = [], title }) {
   return (
-    <section className="surface-raised rounded-lg border p-4">
+    <section className="surface-raised flex h-[32rem] flex-col rounded-lg border p-4">
       <h2 className="text-h3 mb-3">{title}</h2>
-      <div className="overflow-x-auto">
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="table table-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-base-100">
             <tr>
               <th>Name</th>
               <th>Total</th>
               <th>Attempted</th>
+              <th>Correct</th>
+              <th>Incorrect</th>
             </tr>
           </thead>
           <tbody>
@@ -204,11 +313,13 @@ function StatTable({ rows = [], title }) {
                 <td>{row.label}</td>
                 <td>{row.totalQuestions}</td>
                 <td>{row.attemptedQuestions}</td>
+                <td>{row.correctQuestions}</td>
+                <td>{row.incorrectQuestions}</td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="3">No statistics available yet.</td>
+                <td colSpan="5">No statistics available yet.</td>
               </tr>
             ) : null}
           </tbody>
@@ -369,6 +480,7 @@ function HighlightsPageContent() {
 
 function RecordsTable({ kind, loader, remover }) {
   const [state, setState] = useState({ loading: true, error: '', rows: [] })
+  const [preview, setPreview] = useState(null)
 
   const load = useCallback(() => {
     setState((current) => ({ ...current, loading: true, error: '' }))
@@ -412,8 +524,26 @@ function RecordsTable({ kind, loader, remover }) {
                   </div>
                 </td>
                 <td>{new Date(row.updatedAt).toLocaleString()}</td>
-                <td className="text-right">
-                  <button className="btn btn-ghost btn-xs" type="button" onClick={() => remove(row.id)}>Delete</button>
+                <td>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      type="button"
+                      disabled={!row.question}
+                      title="Preview question"
+                      onClick={() => setPreview({
+                        question: row.question,
+                        highlightText: kind === 'highlights' ? row.selector?.exact : '',
+                      })}
+                    >
+                      <span className="material-symbols-outlined">visibility</span>
+                      Preview
+                    </button>
+                    <button className="btn btn-ghost btn-xs" type="button" onClick={() => remove(row.id)}>
+                      <span className="material-symbols-outlined">delete</span>
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -425,12 +555,122 @@ function RecordsTable({ kind, loader, remover }) {
           </tbody>
         </table>
       </div>
+      {preview ? <QuestionPreviewModal highlightText={preview.highlightText} question={preview.question} onClose={() => setPreview(null)} /> : null}
     </section>
+  )
+}
+
+function FeedbackThreadModal({ onClose, onUpdated, threadId }) {
+  const [state, setState] = useState({ loading: true, error: '', data: null })
+  const [reply, setReply] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    getFeedback(threadId)
+      .then((payload) => {
+        if (active) setState({ loading: false, error: '', data: payload })
+      })
+      .catch((error) => {
+        if (active) setState({ loading: false, error: error.message, data: null })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [threadId])
+
+  const submitReply = async (event) => {
+    event.preventDefault()
+    const message = reply.trim()
+    if (!message) return
+
+    setSubmitting(true)
+    setState((current) => ({ ...current, error: '' }))
+
+    try {
+      const payload = await replyFeedback(threadId, message)
+      setState({ loading: false, error: '', data: payload })
+      setReply('')
+      if (payload.thread) onUpdated(payload.thread)
+    } catch (error) {
+      setState((current) => ({ ...current, error: error.message }))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const thread = state.data?.thread
+  const messages = state.data?.messages || []
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-neutral/60 p-3 sm:p-4">
+      <section className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-base-100 shadow-xl">
+        <header className="flex items-start justify-between gap-3 border-b border-base-300 p-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase text-primary">Feedback Thread</p>
+            <h2 className="truncate text-xl font-black sm:text-2xl">{thread?.subject || 'Feedback'}</h2>
+            {thread ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="badge badge-outline">{thread.status}</span>
+                {thread.question ? <span className="badge badge-ghost">QID {thread.question.questionId}</span> : null}
+              </div>
+            ) : null}
+          </div>
+          <button className="btn btn-ghost btn-square btn-sm shrink-0" type="button" onClick={onClose} aria-label="Close feedback thread">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {state.loading ? <LoadingState /> : null}
+          {state.error ? <ErrorState message={state.error} /> : null}
+          {!state.loading && !state.error ? (
+            <div className="grid gap-4">
+              {messages.map((message) => {
+                const fromUser = message.senderType === 'user'
+
+                return (
+                  <article className={`rounded-lg border p-3 ${fromUser ? 'bg-primary/5' : 'bg-base-200'}`} key={message.id}>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <span className={`badge ${fromUser ? 'badge-primary' : 'badge-secondary'}`}>{fromUser ? 'You' : 'Admin'}</span>
+                      <span className="text-xs text-muted">{new Date(message.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm leading-6">{message.message}</p>
+                  </article>
+                )
+              })}
+              {messages.length === 0 ? <div className="alert alert-info"><span>No messages in this thread yet.</span></div> : null}
+            </div>
+          ) : null}
+        </div>
+
+        <form className="grid gap-3 border-t border-base-300 p-4" onSubmit={submitReply}>
+          <textarea
+            className="textarea textarea-bordered min-h-28"
+            disabled={state.loading || submitting || thread?.status === 'closed'}
+            placeholder={thread?.status === 'closed' ? 'This thread is closed.' : 'Write a reply'}
+            value={reply}
+            onChange={(event) => setReply(event.target.value)}
+          />
+          <div className="flex justify-end gap-2">
+            <button className="btn btn-ghost" type="button" onClick={onClose}>Close</button>
+            <button className="btn btn-primary" disabled={state.loading || submitting || !reply.trim() || thread?.status === 'closed'} type="submit">
+              {submitting ? <span className="loading loading-spinner loading-sm" /> : null}
+              Send Reply
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   )
 }
 
 function FeedbackPageContent() {
   const [state, setState] = useState({ loading: true, error: '', rows: [] })
+  const [previewQuestion, setPreviewQuestion] = useState(null)
+  const [openThreadId, setOpenThreadId] = useState(null)
 
   useEffect(() => {
     listFeedback()
@@ -439,6 +679,13 @@ function FeedbackPageContent() {
   }, [])
 
   if (state.loading) return <LoadingState />
+
+  const updateThreadRow = (thread) => {
+    setState((current) => ({
+      ...current,
+      rows: current.rows.map((row) => (row.id === thread.id ? { ...row, ...thread } : row)),
+    }))
+  }
 
   return (
     <div className="grid gap-6">
@@ -456,6 +703,7 @@ function FeedbackPageContent() {
                 <th>Status</th>
                 <th>Question</th>
                 <th>Updated</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -465,17 +713,43 @@ function FeedbackPageContent() {
                   <td><span className="badge badge-outline">{thread.status}</span></td>
                   <td>{thread.question ? `QID ${thread.question.questionId}` : '-'}</td>
                   <td>{new Date(thread.updatedAt).toLocaleString()}</td>
+                  <td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <button className="btn btn-primary btn-xs" type="button" onClick={() => setOpenThreadId(thread.id)}>
+                        <span className="material-symbols-outlined">forum</span>
+                        Open
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-xs"
+                        type="button"
+                        disabled={!thread.question}
+                        title="Preview question"
+                        onClick={() => setPreviewQuestion(thread.question)}
+                      >
+                        <span className="material-symbols-outlined">visibility</span>
+                        Preview
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {state.rows.length === 0 ? (
                 <tr>
-                  <td colSpan="4">No feedback threads yet.</td>
+                  <td colSpan="5">No feedback threads yet.</td>
                 </tr>
               ) : null}
             </tbody>
           </table>
         </div>
       </section>
+      {openThreadId ? (
+        <FeedbackThreadModal
+          threadId={openThreadId}
+          onClose={() => setOpenThreadId(null)}
+          onUpdated={updateThreadRow}
+        />
+      ) : null}
+      {previewQuestion ? <QuestionPreviewModal question={previewQuestion} onClose={() => setPreviewQuestion(null)} /> : null}
     </div>
   )
 }
@@ -755,7 +1029,6 @@ function HomePage({ page = 'dashboard' }) {
         <main className="surface-muted flex-1">
           <section className="container-page grid min-h-[calc(100vh-5rem)] content-start gap-8 py-10 md:py-12">
             <div className="grid gap-3">
-              <p className="text-kicker">{content.eyebrow}</p>
               <h1 className="text-h2">{content.title}</h1>
             </div>
             <PageBody currentPlan={currentPlan} page={page} />

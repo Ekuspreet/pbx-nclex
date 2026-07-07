@@ -1,9 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import ExamQuestionPreviewModal from '../../client/src/ui/questionnaire/ExamQuestionPreviewModal.jsx'
-import { apiRequest } from './apiClient.js'
-import './index.css'
+import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { apiRequest } from '../services/apiClient.js'
+import ExamQuestionPreviewModal from '../ui/questionnaire/ExamQuestionPreviewModal.jsx'
+
+export const ADMIN_ROUTE = '/admin/f6bf13fb-5774-43e7-aef4-57bb4298967f'
+
+function adminRequest(path, options = {}) {
+  return apiRequest(path, {
+    ...options,
+    skipAuthRefresh: true,
+  })
+}
 
 function LoadingPage() {
   return (
@@ -18,7 +25,7 @@ function useAdminSession() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    apiRequest('/admin/me')
+    adminRequest('/admin/me')
       .then((payload) => setAdmin(payload.admin))
       .catch(() => setAdmin(null))
       .finally(() => setLoading(false))
@@ -28,11 +35,11 @@ function useAdminSession() {
     admin,
     loading,
     async login(values) {
-      const payload = await apiRequest('/admin/auth/login', { method: 'POST', body: values })
+      const payload = await adminRequest('/admin/auth/login', { method: 'POST', body: values })
       setAdmin(payload.admin)
     },
     async logout() {
-      await apiRequest('/admin/auth/logout', { method: 'POST' })
+      await adminRequest('/admin/auth/logout', { method: 'POST' })
       setAdmin(null)
     },
   }), [admin, loading])
@@ -57,7 +64,7 @@ function LoginPage() {
     setError('')
     try {
       await admin.login(values)
-      navigate('/')
+      navigate(ADMIN_ROUTE)
     } catch (nextError) {
       setError(nextError.message)
     } finally {
@@ -94,7 +101,7 @@ function Protected({ children }) {
   const admin = useAdmin()
 
   if (admin.loading) return <LoadingPage />
-  if (!admin.admin) return <Navigate replace to="/login" />
+  if (!admin.admin) return <Navigate replace to={`${ADMIN_ROUTE}/login`} />
 
   return children
 }
@@ -102,17 +109,17 @@ function Protected({ children }) {
 function Layout({ children }) {
   const admin = useAdmin()
   const links = [
-    { href: '/', label: 'Dashboard', icon: 'dashboard', end: true },
-    { href: '/users', label: 'Users', icon: 'group' },
-    { href: '/questions', label: 'Questions', icon: 'quiz' },
-    { href: '/feedback', label: 'Feedback', icon: 'feedback' },
+    { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'dashboard', end: true },
+    { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
+    { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
+    { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
   ]
 
   return (
     <div className="min-h-screen bg-base-200 text-base-content" data-theme="nord">
       <header className="navbar border-b border-base-300 bg-base-100 px-4">
         <div className="navbar-start">
-          <Link className="text-xl font-black" to="/">PBX Admin</Link>
+          <Link className="text-xl font-black" to={ADMIN_ROUTE}>PBX Admin</Link>
         </div>
         <div className="navbar-end gap-2">
           <span className="badge badge-outline">{admin.admin?.username}</span>
@@ -200,7 +207,7 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
 
     setState((current) => ({ ...current, loading: true, error: '' }))
 
-    apiRequest(`${endpoint}?${search}`)
+    adminRequest(`${endpoint}?${search}`)
       .then((payload) => {
         if (!active) return
         const key = getEndpointKey(endpoint)
@@ -349,7 +356,7 @@ function DashboardPage() {
   const [state, setState] = useState({ loading: true, error: '', data: null })
 
   useEffect(() => {
-    apiRequest('/admin/dashboard')
+    adminRequest('/admin/dashboard')
       .then((data) => setState({ loading: false, error: '', data }))
       .catch((error) => setState({ loading: false, error: error.message, data: null }))
   }, [])
@@ -391,7 +398,7 @@ function FeedbackDetailPage() {
   const [previewQuestion, setPreviewQuestion] = useState(null)
 
   const load = () => {
-    apiRequest(`/admin/feedback/${feedbackId}`)
+    adminRequest(`/admin/feedback/${feedbackId}`)
       .then((data) => setState({ loading: false, error: '', data }))
       .catch((error) => setState({ loading: false, error: error.message, data: null }))
   }
@@ -402,13 +409,13 @@ function FeedbackDetailPage() {
 
   const reply = async (event) => {
     event.preventDefault()
-    await apiRequest(`/admin/feedback/${feedbackId}/reply`, { method: 'POST', body: { message } })
+    await adminRequest(`/admin/feedback/${feedbackId}/reply`, { method: 'POST', body: { message } })
     setMessage('')
     load()
   }
 
   const setStatus = async (status) => {
-    await apiRequest(`/admin/feedback/${feedbackId}/status`, { method: 'PATCH', body: { status } })
+    await adminRequest(`/admin/feedback/${feedbackId}/status`, { method: 'PATCH', body: { status } })
     load()
   }
 
@@ -461,77 +468,82 @@ function FeedbackDetailPage() {
   )
 }
 
-function App() {
+function AdminRoutes() {
+  return (
+    <Routes>
+      <Route path="login" element={<LoginPage />} />
+      <Route path="" element={<Protected><DashboardPage /></Protected>} />
+      <Route
+        path="users"
+        element={(
+          <Protected>
+            <DataPage
+              title="Users"
+              endpoint="/admin/users"
+              columns={[
+                { label: 'Name', render: (row) => row.name },
+                { label: 'Email', render: (row) => row.email },
+                { label: 'Status', render: (row) => <span className="badge badge-outline">{row.status}</span> },
+                { label: 'Created', render: (row) => new Date(row.createdAt).toLocaleString() },
+              ]}
+            />
+          </Protected>
+        )}
+      />
+      <Route
+        path="questions"
+        element={(
+          <Protected>
+            <DataPage
+              title="Questions"
+              endpoint="/admin/questions"
+              getPreviewQuestion={(row) => row}
+              searchLabel="Question ID"
+              searchPlaceholder="Search QID"
+              columns={[
+                { label: 'QID', render: (row) => row.questionId },
+                { label: 'Subject', render: (row) => row.taxonomy?.subject || '-' },
+                { label: 'System', render: (row) => row.taxonomy?.system || '-' },
+                { label: 'Type', render: (row) => row.questionTypeId },
+                { label: 'Exhibits', render: (row) => (row.exhibits || []).length },
+              ]}
+            />
+          </Protected>
+        )}
+      />
+      <Route
+        path="feedback"
+        element={(
+          <Protected>
+            <DataPage
+              title="Feedback"
+              endpoint="/admin/feedback"
+              getPreviewQuestion={(row) => row.question}
+              columns={[
+                { label: 'Subject', render: (row) => <Link className="link" to={`${ADMIN_ROUTE}/feedback/${row.id}`}>{row.subject}</Link> },
+                { label: 'User', render: (row) => row.user?.email || '-' },
+                { label: 'Question', render: (row) => row.question ? `QID ${row.question.questionId}` : '-' },
+                { label: 'Status', render: (row) => <span className="badge badge-outline">{row.status}</span> },
+                { label: 'Updated', render: (row) => new Date(row.updatedAt).toLocaleString() },
+              ]}
+            />
+          </Protected>
+        )}
+      />
+      <Route path="feedback/:feedbackId" element={<Protected><FeedbackDetailPage /></Protected>} />
+      <Route path="*" element={<Navigate replace to={ADMIN_ROUTE} />} />
+    </Routes>
+  )
+}
+
+function AdminApp() {
   const session = useAdminSession()
 
   return (
     <AdminContext.Provider value={session}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<Protected><DashboardPage /></Protected>} />
-          <Route
-            path="/users"
-            element={(
-              <Protected>
-                <DataPage
-                  title="Users"
-                  endpoint="/admin/users"
-                  columns={[
-                    { label: 'Name', render: (row) => row.name },
-                    { label: 'Email', render: (row) => row.email },
-                    { label: 'Status', render: (row) => <span className="badge badge-outline">{row.status}</span> },
-                    { label: 'Created', render: (row) => new Date(row.createdAt).toLocaleString() },
-                  ]}
-                />
-              </Protected>
-            )}
-          />
-          <Route
-            path="/questions"
-            element={(
-              <Protected>
-                <DataPage
-                  title="Questions"
-                  endpoint="/admin/questions"
-                  getPreviewQuestion={(row) => row}
-                  searchLabel="Question ID"
-                  searchPlaceholder="Search QID"
-                  columns={[
-                    { label: 'QID', render: (row) => row.questionId },
-                    { label: 'Subject', render: (row) => row.taxonomy?.subject || '-' },
-                    { label: 'System', render: (row) => row.taxonomy?.system || '-' },
-                    { label: 'Type', render: (row) => row.questionTypeId },
-                    { label: 'Exhibits', render: (row) => (row.exhibits || []).length },
-                  ]}
-                />
-              </Protected>
-            )}
-          />
-          <Route
-            path="/feedback"
-            element={(
-              <Protected>
-                <DataPage
-                  title="Feedback"
-                  endpoint="/admin/feedback"
-                  getPreviewQuestion={(row) => row.question}
-                  columns={[
-                    { label: 'Subject', render: (row) => <Link className="link" to={`/feedback/${row.id}`}>{row.subject}</Link> },
-                    { label: 'User', render: (row) => row.user?.email || '-' },
-                    { label: 'Question', render: (row) => row.question ? `QID ${row.question.questionId}` : '-' },
-                    { label: 'Status', render: (row) => <span className="badge badge-outline">{row.status}</span> },
-                    { label: 'Updated', render: (row) => new Date(row.updatedAt).toLocaleString() },
-                  ]}
-                />
-              </Protected>
-            )}
-          />
-          <Route path="/feedback/:feedbackId" element={<Protected><FeedbackDetailPage /></Protected>} />
-        </Routes>
-      </BrowserRouter>
+      <AdminRoutes />
     </AdminContext.Provider>
   )
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+export default AdminApp

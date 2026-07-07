@@ -1,5 +1,5 @@
 export function stripExhibitLink(html = '') {
-  return String(html || '').replace(/<p>.*?id="exhibit".*?<\/p>/gi, '')
+  return String(html || '').replace(/<p>\s*(?:<a\b[^>]*>\s*Exhibit(?:\s*\d+)?\s*<\/a>\s*(?:\|\s*)?)+\s*<\/p>/gi, '')
 }
 
 export function getCorrectAnswer(question) {

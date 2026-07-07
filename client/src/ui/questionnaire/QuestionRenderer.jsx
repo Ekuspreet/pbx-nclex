@@ -10,7 +10,7 @@ function isMcqQuestion(question) {
     && Number(question?.questionTypeId ?? MCQ_QUESTION_TYPE_ID) === MCQ_QUESTION_TYPE_ID
 }
 
-function QuestionRenderer({ question, answerState, submitLabel = 'Submit', onAnswerChange, onSubmit }) {
+function QuestionRenderer({ question, answerState, showSubmit = true, submitLabel = 'Submit', onAnswerChange, onSubmit }) {
   if (!question) {
     return <div className="alert alert-warning">No question available.</div>
   }
@@ -31,7 +31,7 @@ function QuestionRenderer({ question, answerState, submitLabel = 'Submit', onAns
         submitted={submitted}
         onChange={onAnswerChange}
       />
-      <QuestionSubmitButton disabled={!canSubmit} label={submitLabel} onSubmit={onSubmit} />
+      {showSubmit ? <QuestionSubmitButton disabled={!canSubmit} label={submitLabel} onSubmit={onSubmit} /> : null}
     </div>
   )
 }

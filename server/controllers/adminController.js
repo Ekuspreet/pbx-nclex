@@ -11,6 +11,16 @@ const {
 } = require('../services/feedbackService');
 const { toClientQuestion } = require('../services/questionBankService');
 
+function createPaginationPayload(total, { limit, offset }) {
+    return {
+        total,
+        limit,
+        offset,
+        page: Math.floor(offset / limit) + 1,
+        pageCount: Math.max(1, Math.ceil(total / limit)),
+    };
+}
+
 function login(req, res, next) {
     try {
         const result = loginAdmin(req.body);
@@ -60,12 +70,24 @@ async function listUsers(req, res, next) {
             query = query.where(conditions[0]);
         }
 
+        let countQuery = db
+            .select({ count: sql`count(*)::int` })
+            .from(users);
+
+        if (conditions.length > 0) {
+            countQuery = countQuery.where(conditions[0]);
+        }
+
+        const [totalRow] = await countQuery;
         const rows = await query
             .orderBy(desc(users.createdAt))
             .limit(req.query.limit)
             .offset(req.query.offset);
 
-        res.status(200).json({ users: rows });
+        res.status(200).json({
+            users: rows,
+            pagination: createPaginationPayload(totalRow?.count || 0, req.query),
+        });
     } catch (error) {
         next(error);
     }
@@ -73,15 +95,35 @@ async function listUsers(req, res, next) {
 
 async function listQuestions(req, res, next) {
     try {
-        const rows = await db
+        const conditions = [];
+
+        if (req.query.q) {
+            const questionId = Number(req.query.q);
+            conditions.push(Number.isInteger(questionId) ? eq(questions.questionId, questionId) : sql`false`);
+        }
+
+        let countQuery = db
+            .select({ count: sql`count(*)::int` })
+            .from(questions);
+
+        let query = db
             .select()
-            .from(questions)
+            .from(questions);
+
+        if (conditions.length > 0) {
+            countQuery = countQuery.where(conditions[0]);
+            query = query.where(conditions[0]);
+        }
+
+        const [totalRow] = await countQuery;
+        const rows = await query
             .orderBy(desc(questions.updatedAt))
             .limit(req.query.limit)
             .offset(req.query.offset);
 
         res.status(200).json({
             questions: rows.map(toClientQuestion),
+            pagination: createPaginationPayload(totalRow?.count || 0, req.query),
         });
     } catch (error) {
         next(error);
