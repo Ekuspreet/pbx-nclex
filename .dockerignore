@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/.npm-cache
+**/dist
+**/.env
+**/*.log
+server/public/downloads
+server/public/images
