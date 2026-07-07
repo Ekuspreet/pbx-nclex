@@ -1,5 +1,5 @@
 {
-  "id": "fafaa7fa-d591-4a16-a31d-27833e682f0b",
+  "id": "f6665f52-d632-4c00-872d-51347cfa5f90",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -15,61 +15,153 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "source_question_id": {
-          "name": "source_question_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_question_index": {
-          "name": "source_question_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_sequence_id": {
-          "name": "source_sequence_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_qbank_id": {
-          "name": "source_qbank_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "question_type": {
-          "name": "question_type",
-          "type": "question_type",
-          "typeSchema": "public",
+        "exhibits": {
+          "name": "exhibits",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
-          "default": "'single_choice'"
+          "default": "'[]'::jsonb"
         },
-        "stem_html": {
-          "name": "stem_html",
+        "sequenceId": {
+          "name": "sequenceId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "questionId": {
+          "name": "questionId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questionIndex": {
+          "name": "questionIndex",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "questionText": {
+          "name": "questionText",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "explanation_html": {
-          "name": "explanation_html",
+        "explanationText": {
+          "name": "explanationText",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "choices": {
-          "name": "choices",
+        "qbankId": {
+          "name": "qbankId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subjectId": {
+          "name": "subjectId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "systemId": {
+          "name": "systemId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "system": {
+          "name": "system",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topicId": {
+          "name": "topicId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "titleId": {
+          "name": "titleId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correctAnswer": {
+          "name": "correctAnswer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answerChoiceList": {
+          "name": "answerChoiceList",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },
-        "taxonomy": {
-          "name": "taxonomy",
+        "formatTypeId": {
+          "name": "formatTypeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "questionTypeId": {
+          "name": "questionTypeId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "questionMappingReferencesList": {
+          "name": "questionMappingReferencesList",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "lastUpdatedDate": {
+          "name": "lastUpdatedDate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "difficultyLevelId": {
+          "name": "difficultyLevelId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "additionalText": {
+          "name": "additionalText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "answerHeader": {
+          "name": "answerHeader",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "standards": {
           "name": "standards",
@@ -78,47 +170,21 @@
           "notNull": true,
           "default": "'[]'::jsonb"
         },
-        "exhibits": {
-          "name": "exhibits",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "references": {
-          "name": "references",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "additional_text_html": {
-          "name": "additional_text_html",
+        "scoringGuide": {
+          "name": "scoringGuide",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "scoring_guide_html": {
-          "name": "scoring_guide_html",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "answer_header_html": {
-          "name": "answer_header_html",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "difficulty_level_id": {
-          "name": "difficulty_level_id",
+        "competencyId": {
+          "name": "competencyId",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
-        "last_source_update": {
-          "name": "last_source_update",
-          "type": "text",
+        "scoreTypeId": {
+          "name": "scoreTypeId",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
@@ -138,11 +204,11 @@
         }
       },
       "indexes": {
-        "questions_source_question_id_idx": {
-          "name": "questions_source_question_id_idx",
+        "questions_questionId_idx": {
+          "name": "questions_questionId_idx",
           "columns": [
             {
-              "expression": "source_question_id",
+              "expression": "questionId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -153,11 +219,11 @@
           "method": "btree",
           "with": {}
         },
-        "questions_question_type_idx": {
-          "name": "questions_question_type_idx",
+        "questions_questionTypeId_idx": {
+          "name": "questions_questionTypeId_idx",
           "columns": [
             {
-              "expression": "question_type",
+              "expression": "questionTypeId",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -168,11 +234,56 @@
           "method": "btree",
           "with": {}
         },
-        "questions_difficulty_level_id_idx": {
-          "name": "questions_difficulty_level_id_idx",
+        "questions_formatTypeId_idx": {
+          "name": "questions_formatTypeId_idx",
           "columns": [
             {
-              "expression": "difficulty_level_id",
+              "expression": "formatTypeId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "questions_difficultyLevelId_idx": {
+          "name": "questions_difficultyLevelId_idx",
+          "columns": [
+            {
+              "expression": "difficultyLevelId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "questions_subject_idx": {
+          "name": "questions_subject_idx",
+          "columns": [
+            {
+              "expression": "subject",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "questions_system_idx": {
+          "name": "questions_system_idx",
+          "columns": [
+            {
+              "expression": "system",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1698,13 +1809,6 @@
     }
   },
   "enums": {
-    "public.question_type": {
-      "name": "question_type",
-      "schema": "public",
-      "values": [
-        "single_choice"
-      ]
-    },
     "public.user_status": {
       "name": "user_status",
       "schema": "public",

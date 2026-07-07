@@ -1,4 +1,3 @@
-CREATE TYPE "public"."question_type" AS ENUM('single_choice');--> statement-breakpoint
 CREATE TYPE "public"."user_status" AS ENUM('active', 'disabled', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."question_stat_dimension" AS ENUM('subject', 'system');--> statement-breakpoint
 CREATE TYPE "public"."test_status" AS ENUM('created', 'in_progress', 'completed');--> statement-breakpoint
@@ -6,23 +5,34 @@ CREATE TYPE "public"."feedback_sender_type" AS ENUM('user', 'admin');--> stateme
 CREATE TYPE "public"."feedback_status" AS ENUM('open', 'reviewing', 'resolved', 'closed');--> statement-breakpoint
 CREATE TABLE "questions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"source_question_id" integer,
-	"source_question_index" integer,
-	"source_sequence_id" integer,
-	"source_qbank_id" integer,
-	"question_type" "question_type" DEFAULT 'single_choice' NOT NULL,
-	"stem_html" text NOT NULL,
-	"explanation_html" text NOT NULL,
-	"choices" jsonb NOT NULL,
-	"taxonomy" jsonb NOT NULL,
-	"standards" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"exhibits" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"references" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"additional_text_html" text,
-	"scoring_guide_html" text,
-	"answer_header_html" text,
-	"difficulty_level_id" integer,
-	"last_source_update" text,
+	"sequenceId" integer,
+	"questionId" integer NOT NULL,
+	"questionIndex" integer,
+	"questionText" text NOT NULL,
+	"explanationText" text NOT NULL,
+	"qbankId" integer,
+	"subjectId" integer,
+	"subject" text,
+	"systemId" integer,
+	"system" text,
+	"topicId" integer,
+	"topic" text,
+	"titleId" integer,
+	"title" text,
+	"correctAnswer" text NOT NULL,
+	"answerChoiceList" jsonb NOT NULL,
+	"formatTypeId" integer DEFAULT 1 NOT NULL,
+	"questionTypeId" integer DEFAULT 1 NOT NULL,
+	"questionMappingReferencesList" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"lastUpdatedDate" text,
+	"difficultyLevelId" integer,
+	"additionalText" text,
+	"answerHeader" text,
+	"standards" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"scoringGuide" text,
+	"competencyId" integer,
+	"scoreTypeId" integer,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -178,9 +188,12 @@ ALTER TABLE "feedback_messages" ADD CONSTRAINT "feedback_messages_thread_id_feed
 ALTER TABLE "feedback_threads" ADD CONSTRAINT "feedback_threads_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "feedback_threads" ADD CONSTRAINT "feedback_threads_question_id_questions_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "feedback_threads" ADD CONSTRAINT "feedback_threads_test_id_tests_id_fk" FOREIGN KEY ("test_id") REFERENCES "public"."tests"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "questions_source_question_id_idx" ON "questions" USING btree ("source_question_id");--> statement-breakpoint
-CREATE INDEX "questions_question_type_idx" ON "questions" USING btree ("question_type");--> statement-breakpoint
-CREATE INDEX "questions_difficulty_level_id_idx" ON "questions" USING btree ("difficulty_level_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "questions_questionId_idx" ON "questions" USING btree ("questionId");--> statement-breakpoint
+CREATE INDEX "questions_questionTypeId_idx" ON "questions" USING btree ("questionTypeId");--> statement-breakpoint
+CREATE INDEX "questions_formatTypeId_idx" ON "questions" USING btree ("formatTypeId");--> statement-breakpoint
+CREATE INDEX "questions_difficultyLevelId_idx" ON "questions" USING btree ("difficultyLevelId");--> statement-breakpoint
+CREATE INDEX "questions_subject_idx" ON "questions" USING btree ("subject");--> statement-breakpoint
+CREATE INDEX "questions_system_idx" ON "questions" USING btree ("system");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_normalized_email_idx" ON "users" USING btree ("normalized_email");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_google_subject_idx" ON "users" USING btree ("google_subject");--> statement-breakpoint
 CREATE INDEX "users_status_idx" ON "users" USING btree ("status");--> statement-breakpoint

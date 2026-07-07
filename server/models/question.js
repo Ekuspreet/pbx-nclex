@@ -6,7 +6,7 @@ const questions = pgTable(
         id: uuid('id').defaultRandom().primaryKey(),
         exhibits: jsonb('exhibits').default([]).notNull(),
         sequenceId: integer('sequenceId'),
-        questionId: integer('questionId').notNull(),
+        questionId: integer('questionId').notNull().unique(),
         questionIndex: integer('questionIndex'),
         questionText: text('questionText').notNull(),
         explanationText: text('explanationText').notNull(),
