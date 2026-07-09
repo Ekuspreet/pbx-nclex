@@ -1,5 +1,0 @@
-FROM docker.io/library/nginx:1.27-alpine
-
-COPY pbx-nclex.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80

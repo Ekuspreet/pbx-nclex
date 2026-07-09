@@ -1,14 +1,15 @@
-# Podman Nginx Reverse Proxy
+# Host Nginx Reverse Proxy
 
-Use the Podman nginx service as the public reverse proxy. The app services stay on the internal Compose network, and nginx owns public port `80`.
+Use your host nginx as the public reverse proxy. Podman only runs the app containers and binds their ports to `127.0.0.1`.
 
 Public routes:
 
-- `http://drac.ooguy.com` -> `client:80`
-- `http://admin.drac.ooguy.com` -> `admin:80`
-- `http://api.drac.ooguy.com` -> `server:5000`
+- `http://your-domain.example/` -> `127.0.0.1:8080`
+- `http://your-domain.example/admin/` -> `127.0.0.1:8081`
+- `http://your-domain.example/api/v1/` -> `127.0.0.1:5000`
+- `http://your-domain.example/public/` -> `127.0.0.1:5000`
 
-The nginx image is built from `deploy/nginx/Containerfile`, and the proxy config is `deploy/nginx/pbx-nclex.conf`.
+The proxy config is `deploy/nginx/pbx-nclex.conf`.
 
 ## Run
 
@@ -18,24 +19,25 @@ Start the stack:
 podman compose -f podman-compose.yaml up -d --build
 ```
 
-Check the nginx logs:
+Install and reload host nginx:
 
 ```bash
-podman logs -f pbx-nclex-nginx
+sudo cp deploy/nginx/pbx-nclex.conf /etc/nginx/sites-available/pbx-nclex.conf
+sudo ln -sf /etc/nginx/sites-available/pbx-nclex.conf /etc/nginx/sites-enabled/pbx-nclex.conf
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ## Config
 
-If the domains change, update the `server_name` values in `deploy/nginx/pbx-nclex.conf` and the matching app URLs in `.env`.
+Point your domain at the host running nginx, set `APP_URL` in `.env`, and set `server_name` in `deploy/nginx/pbx-nclex.conf` to the same domain.
 
 ## App Environment
 
-Set URLs to the public names served by nginx:
+Set the public origin served by nginx:
 
 ```env
-CLIENT_URL=http://drac.ooguy.com
-ADMIN_URL=http://admin.drac.ooguy.com
-SERVER_URL=http://api.drac.ooguy.com
+APP_URL=http://your-domain.example
 ```
 
 For HTTPS, use `https://` URLs and set:

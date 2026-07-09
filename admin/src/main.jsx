@@ -466,7 +466,7 @@ function App() {
 
   return (
     <AdminContext.Provider value={session}>
-      <BrowserRouter>
+      <BrowserRouter basename="/admin">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Protected><DashboardPage /></Protected>} />

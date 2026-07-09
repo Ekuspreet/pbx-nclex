@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const clientModules = path.resolve(__dirname, '../client/node_modules')
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || '/admin/',
   plugins: [
     react(),
     tailwindcss(),
