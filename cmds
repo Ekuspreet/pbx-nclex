@@ -1,0 +1,18 @@
+rebuld client and server 
+
+
+podman rm -f pbx-nursing-client
+podman rm -f pbx-nursing-server
+podman-compose -f podman-compose.yaml up -d --build server client
+
+
+build clinet only
+podman rm -f pbx-nursing-client
+podman-compose -f podman-compose.yaml up -d --build client
+
+
+build server
+podman rm -f pbx-nursing-server
+podman-compose -f podman-compose.yaml up -d --build server
+
+podman-compose -f podman-compose.yaml exec server npm run questions:import

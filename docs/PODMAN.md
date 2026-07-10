@@ -30,7 +30,7 @@ openssl rand -hex 32
 Build and start:
 
 ```bash
-podman compose -f podman-compose.yaml up -d --build
+podman-compose -f podman-compose.yaml up -d --build
 ```
 
 Check logs:

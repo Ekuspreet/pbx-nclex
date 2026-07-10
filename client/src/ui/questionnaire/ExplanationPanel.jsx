@@ -3,7 +3,7 @@ import ReferenceHtml from './ReferenceHtml.jsx'
 
 const BROKEN_IMAGE_ALT = 'Image is broken. We are working to fix it.'
 const BROKEN_IMAGE_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260">
+<svg xmlns="https://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260">
   <rect width="720" height="260" rx="14" fill="#f8fafc"/>
   <rect x="1" y="1" width="718" height="258" rx="13" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="12 10"/>
   <text x="360" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#334155">Image is broken</text>
@@ -12,7 +12,7 @@ const BROKEN_IMAGE_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURICo
 `)}`
 
 function getApiOrigin() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/$/, '')
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://localhost:5000/api/v1').replace(/\/$/, '')
 
   try {
     const url = new URL(apiBase)
