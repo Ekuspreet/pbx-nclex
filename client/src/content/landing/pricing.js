@@ -1,7 +1,7 @@
 export const pricing = {
   id: 'access',
   eyebrow: 'Pricing',
-  title: 'Choose the plan that fits your NCLEX practice.',
+  title: 'Choose the plan that fits your nursing practice.',
   description:
     'Start with a focused free plan, then upgrade when you need more tests, more questions, and more study room.',
   plans: [
@@ -10,7 +10,7 @@ export const pricing = {
       name: 'Free',
       price: '$0',
       cadence: 'Starter access',
-      description: 'A limited plan for trying the PBX NCLEX workspace.',
+      description: 'A limited plan for trying the PBX Nursing workspace.',
       badge: 'Starter',
       features: [
         'Create 1 test',
@@ -21,7 +21,7 @@ export const pricing = {
       cta: {
         label: 'Start free',
         href: '/signup',
-        ariaLabel: 'Sign up for the free PBX NCLEX plan',
+        ariaLabel: 'Sign up for the free PBX Nursing plan',
         variant: 'primary',
       },
     },
@@ -42,7 +42,7 @@ export const pricing = {
       cta: {
         label: 'Go Plus',
         href: '/payment',
-        ariaLabel: 'Upgrade to the PBX NCLEX Plus plan',
+        ariaLabel: 'Upgrade to the PBX Nursing Plus plan',
         variant: 'primary',
       },
     },

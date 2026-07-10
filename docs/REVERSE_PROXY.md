@@ -1,15 +1,15 @@
-# Host Nginx Reverse Proxy
+# Nginx
 
-Use your host nginx as the public reverse proxy. Podman only runs the app containers and binds their ports to `127.0.0.1`.
+The project uses one nginx config: `nginx.conf` at the repo root. The client container copies this file and uses it to serve the built Vite app, including admin routes, and proxy API/public requests to the Express service.
 
 Public routes:
 
-- `http://your-domain.example/` -> `127.0.0.1:8080`
-- `http://your-domain.example/admin/` -> `127.0.0.1:8081`
-- `http://your-domain.example/api/v1/` -> `127.0.0.1:5000`
-- `http://your-domain.example/public/` -> `127.0.0.1:5000`
+- `/` -> built client app
+- `/admin/` -> built client app
+- `/api/v1/` -> Express API at `server:5000`
+- `/public/` -> Express public assets at `server:5000`
 
-The proxy config is `deploy/nginx/pbx-nclex.conf`.
+When running with Podman, public traffic can go directly to the client container on port `8080`, or a host reverse proxy can forward to that same port.
 
 ## Run
 
@@ -19,25 +19,20 @@ Start the stack:
 podman compose -f podman-compose.yaml up -d --build
 ```
 
-Install and reload host nginx:
+If you still use host nginx in front of Podman, forward traffic to the client container:
 
-```bash
-sudo cp deploy/nginx/pbx-nclex.conf /etc/nginx/sites-available/pbx-nclex.conf
-sudo ln -sf /etc/nginx/sites-available/pbx-nclex.conf /etc/nginx/sites-enabled/pbx-nclex.conf
-sudo nginx -t
-sudo systemctl reload nginx
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+}
 ```
-
-## Config
-
-Point your domain at the host running nginx, set `APP_URL` in `.env`, and set `server_name` in `deploy/nginx/pbx-nclex.conf` to the same domain.
 
 ## App Environment
 
-Set the public origin served by nginx:
+Set the public origin served by nginx in `server/.env`:
 
 ```env
-APP_URL=http://your-domain.example
+CLIENT_URL=http://your-domain.example
 ```
 
 For HTTPS, use `https://` URLs and set:

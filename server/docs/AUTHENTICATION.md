@@ -18,6 +18,7 @@ The server uses Express, PostgreSQL, Drizzle ORM, and secure `httpOnly` cookies.
 ## Environment
 
 Create `server/.env` from `server/.env.example` and `client/.env` from `client/.env.example`.
+The learner UI and admin UI are served by the same client app origin; admin lives under `/admin/...`, so `CLIENT_URL` is the only browser origin the server needs to trust.
 
 Generate different token secrets with:
 
@@ -28,7 +29,11 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 Required local backend values include:
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/pbx_nclex
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=pbx_nursing
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
 CLIENT_URL=http://localhost:5173
 SERVER_URL=http://localhost:5000
 ACCESS_TOKEN_SECRET=
@@ -108,7 +113,7 @@ GOOGLE_MAIL_CLIENT_ID=
 GOOGLE_MAIL_CLIENT_SECRET=
 GOOGLE_MAIL_REFRESH_TOKEN=
 EMAIL_FROM=your-sender@gmail.com
-EMAIL_FROM_NAME=PBX NCLEX
+EMAIL_FROM_NAME=PBX Nursing
 ```
 
 `EMAIL_FROM` can be the same mailbox as `GOOGLE_MAIL_USER` or a Gmail send-as alias configured for that account. If `EMAIL_FROM` is omitted, the app sends from `GOOGLE_MAIL_USER`.

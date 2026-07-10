@@ -1,7 +1,7 @@
 export const features = {
   id: 'features',
   eyebrow: 'Our Special Features',
-  title: 'A focused NCLEX testing workspace.',
+  title: 'A focused nursing testing workspace.',
   subheading:
     'The experience keeps instructions, question answering, navigation, and rationales close together without adding avoidable noise.',
   items: [
@@ -10,7 +10,7 @@ export const features = {
       subheading:
         'Start with clear instructions, visible test status, and a direct path into the next available question.',
       visual: {
-        ariaLabel: 'Preview of grouped NCLEX learning material',
+        ariaLabel: 'Preview of grouped nursing learning material',
         label: 'Study folder',
         title: 'Readiness block',
         rows: ['Timed mode context', 'Question count', 'Resume-ready state'],

@@ -9,4 +9,7 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     tailwindcss()
   ],
+  server: {
+    allowedHosts: ['.localhost', '.local', '.ngrok.io', 'dose-introduces-apparent-poster.trycloudflare.com']
+  }
 })

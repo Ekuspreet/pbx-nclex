@@ -107,7 +107,7 @@ function AuthPage({ mode }) {
         <div className="absolute inset-0 bg-neutral/55 backdrop-blur-[1px] lg:hidden" aria-hidden="true" />
 
         <section className="relative hidden min-h-[calc(100vh-10rem)] overflow-hidden lg:block">
-          <img className="absolute inset-0 h-full w-full object-cover" src={authImage} alt="Nursing student preparing for NCLEX" />
+          <img className="absolute inset-0 h-full w-full object-cover" src={authImage} alt="Nursing student preparing for nursing practice" />
           <div className="absolute inset-0 bg-gray-500/55 backdrop-blur-[1px]" aria-hidden="true" />
         </section>
 
@@ -120,7 +120,7 @@ function AuthPage({ mode }) {
             <div className="grid gap-4 p-6">
               <div className="grid gap-2 text-center">
                 <p className="text-kicker">{isSignup ? 'Start learning' : 'Welcome back'}</p>
-                <h1 className="text-3xl font-black">{isSignup ? 'Create your account' : 'Log in to PBX-NCLEX'}</h1>
+                <h1 className="text-3xl font-black">{isSignup ? 'Create your account' : 'Log in to PBX Nursing'}</h1>
               </div>
 
               {status ? (

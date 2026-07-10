@@ -1,5 +1,5 @@
 import { GoogleOAuthProvider } from '@react-oauth/google'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { GuestRoute, ProtectedRoute } from './auth/AuthRoutes.jsx'
 import AdminApp, { ADMIN_ROUTE } from './admin/AdminApp.jsx'
@@ -42,6 +42,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path={`${ADMIN_ROUTE}/*`} element={<AdminApp />} />
+          <Route path="/admin/*" element={<Navigate replace to={ADMIN_ROUTE} />} />
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<AuthPage mode="login" />} />
             <Route path="/signup" element={<AuthPage mode="signup" />} />

@@ -20,5 +20,5 @@ export const footer = {
       ],
     },
   ],
-  copyright: 'Copyright 2026 PBX - NCLEX. All rights reserved.',
+  copyright: 'Copyright 2026 PBX Nursing. All rights reserved.',
 }

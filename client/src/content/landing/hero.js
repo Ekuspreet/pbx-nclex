@@ -1,17 +1,17 @@
 export const hero = {
   id: 'home',
-  eyebrow: 'PBX-NCLEX',
-  title: 'Master NCLEX Questions Like a Pro',
+  eyebrow: 'PBX Nursing',
+  title: 'Master Nursing Questions Like a Pro',
   primaryCta: {
     label: 'Sign up',
     href: '/signup',
-    ariaLabel: 'Go to signup access for PBX - NCLEX',
+    ariaLabel: 'Go to signup access for PBX Nursing',
     variant: 'primary',
   },
   secondaryCta: {
     label: 'Log in',
     href: '/login',
-    ariaLabel: 'Go to login access for PBX - NCLEX',
+    ariaLabel: 'Go to login access for PBX Nursing',
     variant: 'secondary',
   },
   media: {
@@ -20,10 +20,10 @@ export const hero = {
       { src: '/videos/stock2.mp4', type: 'video/mp4' },
     ],
     posterSrc: '/images/hero-poster.png',
-    ariaLabel: 'Background video for PBX - NCLEX landing page',
+    ariaLabel: 'Background video for PBX Nursing landing page',
   },
   metrics: [
-    { value: 'Realistic', label: 'NCLEX-style practice' },
+    { value: 'Realistic', label: 'nursing practice' },
     { value: 'Insightful', label: 'clear answer rationales' },
     { value: 'Progressive', label: 'readiness tracking' },
   ],

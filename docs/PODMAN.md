@@ -1,18 +1,17 @@
 # Podman Deployment
 
-This setup runs four containers:
+This setup runs three containers:
 
 - `postgres`: PostgreSQL database
 - `server`: Express API on port `5000`
-- `client`: built Vite client served by nginx on internal port `80`
-- `admin`: built Vite admin served by nginx on internal port `80`
+- `client`: built Vite client and admin UI served by nginx on internal port `80`
 
-Podman binds the app ports to `127.0.0.1` only. Your host nginx owns public port `80` and routes one domain by path:
+Podman publishes the client container on port `8080`. The client container uses the repo-root `nginx.conf` to serve the app and proxy API/public requests to the server container:
 
 - `/` -> `127.0.0.1:8080`
-- `/admin/` -> `127.0.0.1:8081`
-- `/api/v1/` -> `127.0.0.1:5000`
-- `/public/` -> `127.0.0.1:5000`
+- `/admin/` -> `127.0.0.1:8080`
+- `/api/v1/` -> `server:5000`
+- `/public/` -> `server:5000`
 
 ## Local or Server Run
 
@@ -34,15 +33,6 @@ Build and start:
 podman compose -f podman-compose.yaml up -d --build
 ```
 
-Install the host nginx config:
-
-```bash
-sudo cp deploy/nginx/pbx-nclex.conf /etc/nginx/sites-available/pbx-nclex.conf
-sudo ln -sf /etc/nginx/sites-available/pbx-nclex.conf /etc/nginx/sites-enabled/pbx-nclex.conf
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
 Check logs:
 
 ```bash
@@ -61,7 +51,7 @@ Open:
 - Admin: `http://your-domain.example/admin/`
 - API health: `http://your-domain.example/api/v1/health`
 
-The direct host ports `8080`, `8081`, `5000`, and `5432` are bound to `127.0.0.1`. Public traffic should enter through host nginx on port `80`.
+The client port `8080` is publicly published. The API and database ports `5000` and `5432` stay bound to `127.0.0.1`.
 
 ## Production Notes
 
@@ -73,6 +63,6 @@ COOKIE_SECURE=true
 COOKIE_SAME_SITE=lax
 ```
 
-The nginx reverse proxy runs on the host and uses `deploy/nginx/pbx-nclex.conf`. It proxies public port `80` to the loopback ports exposed by Podman: `127.0.0.1:8080`, `127.0.0.1:8081`, and `127.0.0.1:5000`.
+The nginx config used by the client container is `nginx.conf` at the repo root. If you run host nginx for HTTPS, it only needs to proxy to the client container at `127.0.0.1:8080`.
 
 Keep Postgres private by leaving its port bound to `127.0.0.1`, or remove the `POSTGRES_PORT` mapping if you do not need direct database access from the host.

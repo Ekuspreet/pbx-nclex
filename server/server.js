@@ -10,7 +10,7 @@ const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
-const allowedOrigins = `${env.CLIENT_URL},${env.ADMIN_URL}`.split(',').map((origin) => origin.trim()).filter(Boolean);
+const allowedOrigins = [env.CLIENT_URL].filter(Boolean);
 const publicPath = path.join(__dirname, 'public');
 const brokenDownloadPlaceholder = `
 <svg xmlns="http://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260">

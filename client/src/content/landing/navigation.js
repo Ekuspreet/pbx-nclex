@@ -1,12 +1,12 @@
 import logoSrc from '../../assets/pbx-logo.png'
 
 export const brand = {
-  name: 'PBX - NCLEX',
+  name: 'PBX Nursing',
   shortName: 'PBX',
   statement:
-    'A focused NCLEX preparation workspace for nursing students and exam-preparation material.',
+    'A focused nursing preparation workspace for nursing students and study material.',
   logoSrc,
-  logoAlt: 'PBX - NCLEX logo',
+  logoAlt: 'PBX Nursing logo',
 }
 
 /** @type {import('./types.js').NavigationItem[]} */

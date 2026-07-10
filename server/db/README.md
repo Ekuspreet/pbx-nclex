@@ -7,7 +7,11 @@ This server uses PostgreSQL through `pg` and Drizzle ORM.
 Create `server/.env` from `.env.example` and set:
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/pbx_nclex
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=pbx_nursing
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
 ```
 
 ## Schema

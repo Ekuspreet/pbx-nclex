@@ -1,15 +1,10 @@
 const { Pool } = require('pg');
 const { drizzle } = require('drizzle-orm/node-postgres');
 
+const { validateDatabaseEnv } = require('../env/database');
 const schema = require('../models');
 
-if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required to connect to PostgreSQL');
-}
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+const pool = new Pool(validateDatabaseEnv());
 
 const db = drizzle(pool, { schema });
 

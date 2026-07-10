@@ -1,6 +1,9 @@
 const dotenv = require('dotenv');
+const { readDatabaseEnv } = require('./database');
 
 dotenv.config();
+
+const databaseEnv = readDatabaseEnv();
 
 function readEnv(key, defaultValue = undefined) {
     const value = process.env[key];
@@ -19,10 +22,13 @@ function isSingleEmailAddress(value) {
 const env = {
     NODE_ENV: readEnv('NODE_ENV', 'development'),
     PORT: readEnv('PORT', '5000'),
-    DATABASE_URL: readEnv('DATABASE_URL'),
+    POSTGRES_HOST: databaseEnv.host,
+    POSTGRES_PORT: databaseEnv.port,
+    POSTGRES_DB: databaseEnv.database,
+    POSTGRES_USER: databaseEnv.user,
+    POSTGRES_PASSWORD: databaseEnv.password,
 
     CLIENT_URL: readEnv('CLIENT_URL', 'http://localhost:5173'),
-    ADMIN_URL: readEnv('ADMIN_URL', 'http://localhost:5174'),
     SERVER_URL: readEnv('SERVER_URL', 'http://localhost:5000'),
 
     ACCESS_TOKEN_SECRET: readEnv('ACCESS_TOKEN_SECRET'),
@@ -52,18 +58,24 @@ const env = {
 
     EMAIL_PROVIDER: readEnv('EMAIL_PROVIDER', 'console'),
     EMAIL_FROM: readEnv('EMAIL_FROM'),
-    EMAIL_FROM_NAME: readEnv('EMAIL_FROM_NAME', 'PBX NCLEX'),
+    EMAIL_FROM_NAME: readEnv('EMAIL_FROM_NAME', 'PBX Nursing'),
     GOOGLE_MAIL_USER: readEnv('GOOGLE_MAIL_USER'),
     GOOGLE_MAIL_CLIENT_ID: readEnv('GOOGLE_MAIL_CLIENT_ID'),
     GOOGLE_MAIL_CLIENT_SECRET: readEnv('GOOGLE_MAIL_CLIENT_SECRET'),
     GOOGLE_MAIL_REFRESH_TOKEN: readEnv('GOOGLE_MAIL_REFRESH_TOKEN'),
 
-    APP_NAME: readEnv('APP_NAME', 'PBX NCLEX'),
+    APP_NAME: readEnv('APP_NAME', 'PBX Nursing'),
 };
 
 function validateEnv() {
     const errors = [];
     const supportedEmailProviders = new Set(['console', 'gmail']);
+
+    for (const key of ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']) {
+        if (!env[key]) {
+            errors.push(`${key} is required to connect to PostgreSQL.`);
+        }
+    }
 
     if (!supportedEmailProviders.has(env.EMAIL_PROVIDER)) {
         errors.push('EMAIL_PROVIDER must be either "console" or "gmail".');

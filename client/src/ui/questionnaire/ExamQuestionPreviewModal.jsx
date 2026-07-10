@@ -6,7 +6,7 @@ function ExamPreviewTopBar({ onClose, question }) {
   return (
     <div className="grid grid-cols-3 items-center bg-base-300 px-2 py-1 shadow-sm">
       <div className="flex flex-col font-bold">
-        <p>NCLEX-RN</p>
+        <p>NURSING</p>
         <p>READINESS ASSESSMENT</p>
       </div>
       <div className="flex flex-col justify-self-center">

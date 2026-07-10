@@ -3,6 +3,7 @@
 **/.npm-cache
 **/dist
 **/.env
+!client/.env
 **/*.log
 server/public/downloads
 server/public/images

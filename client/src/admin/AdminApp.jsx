@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { brand } from '../content/landing/index.js'
 import { apiRequest } from '../services/apiClient.js'
+import DrawerShell, { AccountPanel } from '../ui/layout/DrawerShell.jsx'
 import ExamQuestionPreviewModal from '../ui/questionnaire/ExamQuestionPreviewModal.jsx'
 
 export const ADMIN_ROUTE = '/admin/f6bf13fb-5774-43e7-aef4-57bb4298967f'
@@ -47,6 +49,18 @@ function useAdminSession() {
 
 const AdminContext = React.createContext(null)
 
+const adminNavGroups = [
+  {
+    label: 'Admin',
+    items: [
+      { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'dashboard', end: true },
+      { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
+      { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
+      { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
+    ],
+  },
+]
+
 function useAdmin() {
   return React.useContext(AdminContext)
 }
@@ -76,7 +90,7 @@ function LoginPage() {
     <main className="grid min-h-screen place-items-center bg-base-200 p-4" data-theme="nord">
       <form className="card w-full max-w-sm bg-base-100 shadow-xl" onSubmit={submit}>
         <div className="card-body">
-          <p className="text-xs font-black uppercase text-primary">PBX NCLEX</p>
+          <p className="text-xs font-black uppercase text-primary">PBX Nursing</p>
           <h1 className="text-3xl font-black">Admin Login</h1>
           {error ? <div className="alert alert-error"><span>{error}</span></div> : null}
           <label className="form-control gap-2">
@@ -106,39 +120,34 @@ function Protected({ children }) {
   return children
 }
 
-function Layout({ children }) {
+function Layout({ children, title }) {
   const admin = useAdmin()
-  const links = [
-    { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'dashboard', end: true },
-    { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
-    { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
-    { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
-  ]
 
   return (
-    <div className="min-h-screen bg-base-200 text-base-content" data-theme="nord">
-      <header className="navbar border-b border-base-300 bg-base-100 px-4">
-        <div className="navbar-start">
-          <Link className="text-xl font-black" to={ADMIN_ROUTE}>PBX Admin</Link>
-        </div>
-        <div className="navbar-end gap-2">
-          <span className="badge badge-outline">{admin.admin?.username}</span>
-          <button className="btn btn-ghost btn-sm" type="button" onClick={admin.logout}>Logout</button>
-        </div>
-      </header>
-      <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="border-r border-base-300 bg-base-100 p-3">
-          <nav className="menu gap-1">
-            {links.map((link) => (
-              <NavLink className={({ isActive }) => isActive ? 'active font-black' : 'font-bold'} end={link.end} key={link.href} to={link.href}>
-                <span className="material-symbols-outlined">{link.icon}</span>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-        <main className="p-4 md:p-8">{children}</main>
-      </div>
+    <DrawerShell
+      account={(
+        <AccountPanel
+          badge={{ className: 'badge-outline', label: 'Admin' }}
+          caption="Admin workspace"
+          name={admin.admin?.username || 'Admin'}
+          onLogout={admin.logout}
+        />
+      )}
+      brand={brand}
+      drawerId="admin-drawer"
+      navAriaLabel="Admin pages"
+      navGroups={adminNavGroups}
+      title={title}
+    >
+      {children}
+    </DrawerShell>
+  )
+}
+
+function InlineLoading() {
+  return (
+    <div className="grid min-h-48 place-items-center">
+      <span className="loading loading-spinner loading-lg text-primary" />
     </div>
   )
 }
@@ -258,15 +267,11 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
   }
 
   return (
-    <Layout>
-      <div className="mb-6">
-        <p className="text-xs font-black uppercase text-primary">Admin</p>
-        <h1 className="text-4xl font-black">{title}</h1>
-      </div>
-      {state.loading ? <LoadingPage /> : null}
+    <Layout title={title}>
+      {state.loading ? <InlineLoading /> : null}
       {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
       {!state.loading && !state.error ? (
-        <section className="rounded-lg border border-base-300 bg-base-100 p-4">
+        <section className="surface-raised rounded-lg border p-4">
           {searchLabel ? (
             <form className="mb-4 flex flex-wrap items-end gap-2" onSubmit={submitSearch}>
               <label className="form-control w-full max-w-xs gap-1">
@@ -362,12 +367,8 @@ function DashboardPage() {
   }, [])
 
   return (
-    <Layout>
-      <div className="mb-6">
-        <p className="text-xs font-black uppercase text-primary">Admin</p>
-        <h1 className="text-4xl font-black">Dashboard</h1>
-      </div>
-      {state.loading ? <span className="loading loading-spinner loading-lg" /> : null}
+    <Layout title="Dashboard">
+      {state.loading ? <InlineLoading /> : null}
       {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
       {state.data ? (
         <section className="grid gap-4 md:grid-cols-3">
@@ -382,7 +383,7 @@ function DashboardPage() {
 
 function StatCard({ label, value }) {
   return (
-    <article className="card border border-base-300 bg-base-100">
+    <article className="card surface-raised">
       <div className="card-body">
         <p className="text-sm font-bold text-base-content/70">{label}</p>
         <strong className="text-4xl font-black">{value}</strong>
@@ -397,15 +398,15 @@ function FeedbackDetailPage() {
   const [message, setMessage] = useState('')
   const [previewQuestion, setPreviewQuestion] = useState(null)
 
-  const load = () => {
+  const load = useCallback(() => {
     adminRequest(`/admin/feedback/${feedbackId}`)
       .then((data) => setState({ loading: false, error: '', data }))
       .catch((error) => setState({ loading: false, error: error.message, data: null }))
-  }
+  }, [feedbackId])
 
   useEffect(() => {
     load()
-  }, [feedbackId])
+  }, [load])
 
   const reply = async (event) => {
     event.preventDefault()
@@ -420,8 +421,8 @@ function FeedbackDetailPage() {
   }
 
   return (
-    <Layout>
-      {state.loading ? <span className="loading loading-spinner loading-lg" /> : null}
+    <Layout title="Feedback">
+      {state.loading ? <InlineLoading /> : null}
       {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
       {state.data ? (
         <div className="grid gap-4">
@@ -449,7 +450,7 @@ function FeedbackDetailPage() {
               </select>
             </div>
           </div>
-          <section className="grid gap-3 rounded-lg border border-base-300 bg-base-100 p-4">
+          <section className="surface-raised grid gap-3 rounded-lg border p-4">
             {state.data.messages.map((item) => (
               <article className={`chat ${item.senderType === 'admin' ? 'chat-end' : 'chat-start'}`} key={item.id}>
                 <div className="chat-header">{item.senderType}</div>

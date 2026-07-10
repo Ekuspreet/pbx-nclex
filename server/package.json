@@ -1,5 +1,5 @@
 {
-    "name": "pbx-nclex-server",
+    "name": "pbx-nursing-server",
     "version": "1.0.0",
     "private": true,
     "main": "index.js",
