@@ -15,7 +15,7 @@ import {
   listTests,
   replyFeedback,
 } from '../services/studyAdapter.js'
-import DrawerShell, { AccountPanel } from '../ui/layout/DrawerShell.jsx'
+import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
 import QuestionPreviewModal from '../ui/questionnaire/QuestionPreviewModal.jsx'
 
 const navGroups = [
@@ -45,7 +45,7 @@ const navGroups = [
 ]
 
 const pageContent = {
-  dashboard: { eyebrow: 'Dashboard', title: 'Dashboard' },
+  dashboard: { eyebrow: 'Dashboard', title: 'Statistics' },
   createTest: { eyebrow: 'Tests', title: 'Create Test' },
   tests: { eyebrow: 'Tests', title: 'Tests' },
   pricing: { eyebrow: 'Pricing', title: 'Pricing' },
@@ -85,20 +85,6 @@ function ErrorState({ message }) {
   )
 }
 
-function StatCard({ label, value, icon }) {
-  return (
-    <article className="card surface-raised">
-      <div className="card-body p-md gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-caption font-bold text-muted">{label}</p>
-          <span className="material-symbols-outlined text-primary">{icon}</span>
-        </div>
-        <strong className="text-h3">{value}</strong>
-      </div>
-    </article>
-  )
-}
-
 function asCount(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0
 }
@@ -108,95 +94,34 @@ function getPercent(value, total) {
   return `${Math.round((value / total) * 100)}%`
 }
 
-function PieChartCard({ title, total, segments, centerLabel, centerCaption }) {
-  const activeSegments = segments.filter((segment) => segment.value > 0)
-  let offset = 0
-
+function ProgressRing({ label, value, color = 'text-primary' }) {
+  const progress = Math.min(Math.max(asCount(value), 0), 100)
   return (
-    <article className="surface-raised rounded-lg border p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-h6">{title}</h2>
-        <span className="badge badge-outline">{total}</span>
+    <div className="relative mx-auto size-40 shrink-0 md:size-44">
+      <svg aria-label={`${label}: ${progress}%`} className="size-full -rotate-90" role="img" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" fill="none" r="16" stroke="currentColor" strokeWidth="2.5" className="text-base-300" />
+        <circle cx="20" cy="20" fill="none" pathLength="100" r="16" stroke="currentColor" strokeDasharray={`${progress} ${100 - progress}`} strokeLinecap="butt" strokeWidth="2.5" className={color} />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        <span className="text-3xl text-base-content/70">{progress}%</span>
       </div>
-      <div className="grid items-center gap-4 sm:grid-cols-[11rem_1fr]">
-        <div className="relative mx-auto size-44">
-          <svg aria-label={title} className="size-44 -rotate-90" role="img" viewBox="0 0 40 40">
-            <circle cx="20" cy="20" fill="none" r="15.9155" stroke="currentColor" strokeWidth="7" className="text-base-300" />
-            {activeSegments.map((segment) => {
-              const percent = total > 0 ? (segment.value / total) * 100 : 0
-              const dashOffset = -offset
-              offset += percent
-
-              return (
-                <circle
-                  cx="20"
-                  cy="20"
-                  fill="none"
-                  key={segment.label}
-                  pathLength="100"
-                  r="15.9155"
-                  stroke={segment.color}
-                  strokeDasharray={`${percent} ${100 - percent}`}
-                  strokeDashoffset={dashOffset}
-                  strokeWidth="7"
-                />
-              )
-            })}
-          </svg>
-          <div className="absolute inset-0 grid place-items-center text-center">
-            <div>
-              <strong className="text-h3 block">{centerLabel}</strong>
-              <span className="text-caption text-muted">{centerCaption}</span>
-            </div>
-          </div>
-        </div>
-        <div className="grid gap-2">
-          {segments.map((segment) => (
-            <div className="flex items-center justify-between gap-3" key={segment.label}>
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
-                <span className="truncate text-sm font-bold">{segment.label}</span>
-              </div>
-              <span className="text-sm text-muted">{segment.value} / {getPercent(segment.value, total)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </article>
+    </div>
   )
 }
 
-function DashboardCharts({ data }) {
-  const totalQuestions = asCount(data.totalQuestions)
-  const attemptedQuestions = asCount(data.attemptedQuestions)
-  const correctQuestions = asCount(data.correctQuestions)
-  const incorrectQuestions = asCount(data.incorrectQuestions)
-  const unattemptedQuestions = Math.max(totalQuestions - attemptedQuestions, 0)
-  const resultTotal = correctQuestions + incorrectQuestions
-
+function MetricList({ title, rows }) {
   return (
-    <section className="grid gap-4 xl:grid-cols-2">
-      <PieChartCard
-        centerCaption="attempted"
-        centerLabel={getPercent(attemptedQuestions, totalQuestions)}
-        segments={[
-          { label: 'Attempted', value: attemptedQuestions, color: '#2563eb' },
-          { label: 'Unattempted', value: unattemptedQuestions, color: '#94a3b8' },
-        ]}
-        title="Question Coverage"
-        total={totalQuestions}
-      />
-      <PieChartCard
-        centerCaption="correct"
-        centerLabel={getPercent(correctQuestions, resultTotal)}
-        segments={[
-          { label: 'Correct', value: correctQuestions, color: '#16a34a' },
-          { label: 'Incorrect', value: incorrectQuestions, color: '#dc2626' },
-        ]}
-        title="Latest Attempt Results"
-        total={resultTotal}
-      />
-    </section>
+    <div className="min-w-0 flex-1">
+      <h2 className="text-h6 mb-3">{title}</h2>
+      <dl className="grid gap-3">
+        {rows.map((row) => (
+          <div className="flex items-center justify-between gap-4" key={row.label}>
+            <dt className="text-muted">{row.label}</dt>
+            <dd><span className="badge badge-ghost badge-sm min-w-7">{row.value}</span></dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 
@@ -223,94 +148,81 @@ function DashboardPageContent() {
   if (state.error) return <ErrorState message={state.error} />
 
   const { data } = state
+  const total = asCount(data.totalQuestions)
+  const used = asCount(data.attemptedQuestions)
+  const correct = asCount(data.correctQuestions)
+  const incorrect = asCount(data.incorrectQuestions)
+  const omitted = Math.max(used - correct - incorrect, 0)
+  const performanceTotal = correct + incorrect + omitted
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard icon="quiz" label="Total questions" value={data.totalQuestions} />
-        <StatCard icon="task_alt" label="Attempted" value={data.attemptedQuestions} />
-        <StatCard icon="check_circle" label="Correct" value={data.correctQuestions} />
-        <StatCard icon="cancel" label="Incorrect" value={data.incorrectQuestions} />
-      </div>
-
-      <DashboardCharts data={data} />
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <StatTable rows={data.subjects} title="Subjects" />
-        <StatTable rows={data.systems} title="Systems" />
-      </section>
-
-      <section className="surface-raised rounded-lg border p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-h3">Recent Tests</h2>
-          <a className="btn btn-primary btn-sm" href="/tests/create">Create test</a>
+    <div className="grid gap-10">
+      <section className="grid gap-10 xl:grid-cols-2 xl:gap-16" aria-label="Statistics summary">
+        <div className="flex flex-col items-center gap-8 sm:flex-row">
+          <ProgressRing color="text-success/40" label="Performance" value={getPercent(correct, performanceTotal).replace('%', '')} />
+          <MetricList title="Performance" rows={[
+            { label: 'Correct', value: correct },
+            { label: 'Incorrect', value: incorrect },
+            { label: 'Omitted', value: omitted },
+            { label: 'Scored Points', value: correct },
+            { label: 'Max Points', value: performanceTotal },
+          ]} />
         </div>
-        <div className="overflow-x-auto">
-          <table className="table table-sm">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Questions</th>
-                <th>Mode</th>
-                <th>Score</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {(data.tests || []).map((test) => (
-                <tr key={test.id}>
-                  <td><span className="badge badge-outline">{test.status}</span></td>
-                  <td>{test.questionCount}</td>
-                  <td>{test.tutorMode ? 'Tutor' : 'Test'} / {test.timed ? 'Timed' : 'Untimed'}</td>
-                  <td>{test.scoreSummary?.percentage ?? '-'}%</td>
-                  <td className="text-right">
-                    <a className="btn btn-ghost btn-xs" href={test.status === 'completed' ? `/tests/${test.id}/result` : `/tests/${test.id}`}>
-                      Open
-                    </a>
-                  </td>
-                </tr>
-              ))}
-              {(!data.tests || data.tests.length === 0) ? (
-                <tr>
-                  <td colSpan="5">No tests yet.</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+        <div className="flex flex-col-reverse items-center gap-8 sm:flex-row">
+          <MetricList title="QBank Usage" rows={[
+            { label: 'Used Questions', value: used },
+            { label: 'Unused Questions', value: Math.max(total - used, 0) },
+            { label: 'Total Questions', value: total },
+          ]} />
+          <ProgressRing color="text-info/40" label="QBank usage" value={getPercent(used, total).replace('%', '')} />
         </div>
       </section>
+
+      <StatTable subjects={data.subjects} systems={data.systems} />
     </div>
   )
 }
 
-function StatTable({ rows = [], title }) {
+function StatTable({ subjects = [], systems = [] }) {
+  const [activeTab, setActiveTab] = useState('subjects')
+  const rows = activeTab === 'subjects' ? subjects : systems
+
   return (
-    <section className="surface-raised flex h-[32rem] flex-col rounded-lg border p-4">
-      <h2 className="text-h3 mb-3">{title}</h2>
+    <section className="min-w-0">
+      <div className="tabs tabs-border mb-4" role="tablist" aria-label="Statistics category">
+        {['subjects', 'systems'].map((tab) => (
+          <button className={`tab px-6 capitalize ${activeTab === tab ? 'tab-active' : ''}`} key={tab} onClick={() => setActiveTab(tab)} role="tab" type="button">{tab}</button>
+        ))}
+      </div>
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="table table-sm">
           <thead className="sticky top-0 z-10 bg-base-100">
             <tr>
               <th>Name</th>
-              <th>Total</th>
-              <th>Attempted</th>
-              <th>Correct</th>
-              <th>Incorrect</th>
+              <th>Usage</th>
+              <th>Scored / Max</th>
+              <th>Correct Q</th>
+              <th>Incorrect Q</th>
+              <th>Omitted Q</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.key}>
-                <td>{row.label}</td>
-                <td>{row.totalQuestions}</td>
-                <td>{row.attemptedQuestions}</td>
-                <td>{row.correctQuestions}</td>
-                <td>{row.incorrectQuestions}</td>
+                <td className="min-w-64">
+                  <span>{row.label}</span>
+                  <progress className="progress progress-success mt-2 block h-1.5 w-full" max={row.totalQuestions || 1} value={row.attemptedQuestions} />
+                </td>
+                <td>{row.attemptedQuestions}/{row.totalQuestions}</td>
+                <td>{row.correctQuestions} / {row.totalQuestions} ({getPercent(row.correctQuestions, row.totalQuestions)})</td>
+                <td>{row.correctQuestions} ({getPercent(row.correctQuestions, row.attemptedQuestions)})</td>
+                <td>{row.incorrectQuestions} ({getPercent(row.incorrectQuestions, row.attemptedQuestions)})</td>
+                <td>{Math.max(row.attemptedQuestions - row.correctQuestions - row.incorrectQuestions, 0)} ({getPercent(Math.max(row.attemptedQuestions - row.correctQuestions - row.incorrectQuestions, 0), row.attemptedQuestions)})</td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="5">No statistics available yet.</td>
+                <td colSpan="6">No statistics available yet.</td>
               </tr>
             ) : null}
           </tbody>
@@ -380,72 +292,106 @@ function CreateTestPageContent() {
   if (statsState.loading) return <LoadingState />
   if (statsState.error) return <ErrorState message={statsState.error} />
 
+  const totalQuestions = statsState.data.subjects.reduce((sum, option) => sum + asCount(option.totalQuestions), 0)
+  const maxQuestions = Math.min(totalQuestions, 80)
+
   return (
-    <form className="grid gap-6" onSubmit={submit}>
+    <form className="grid gap-8" onSubmit={submit}>
       {submitError ? <ErrorState message={submitError} /> : null}
 
-      <section className="surface-raised rounded-lg border p-4">
-        <h2 className="text-h3 mb-4">Test Props</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <fieldset>
+        <legend className="text-h6 mb-4">Test Mode</legend>
+        <div className="flex flex-wrap gap-x-12 gap-y-4">
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.tutorMode} onChange={(event) => setForm({ ...form, tutorMode: event.target.checked })} />
-            <span className="label-text font-bold">Tutor Mode</span>
+            <span className="label-text">Tutor</span>
           </label>
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.timed} onChange={(event) => setForm({ ...form, timed: event.target.checked })} />
-            <span className="label-text font-bold">Timer</span>
+            <span className="label-text">Timed</span>
           </label>
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.showRationales} onChange={(event) => setForm({ ...form, showRationales: event.target.checked })} />
-            <span className="label-text font-bold">Show Rationales</span>
-          </label>
-          <label className="form-control">
-            <span className="label-text font-bold">Questions</span>
-            <input
-              className="input input-bordered"
-              max="80"
-              min="1"
-              type="number"
-              value={form.questionCount}
-              onChange={(event) => setForm({ ...form, questionCount: event.target.value })}
-            />
+            <span className="label-text">Show Rationales</span>
           </label>
         </div>
-      </section>
+      </fieldset>
+
+      <fieldset>
+        <legend className="text-h6 mb-4 flex items-center gap-2">
+          Question Mode
+          <span className="tooltip tooltip-right" data-tip="Question history filters will become available as you complete tests.">
+            <span className="material-symbols-outlined text-info" aria-label="About question modes">info</span>
+          </span>
+        </legend>
+        <div className="flex flex-wrap gap-x-10 gap-y-3">
+          <QuestionModeOption count={totalQuestions} label="Unused" selected />
+          <QuestionModeOption count={0} label="Incorrect" />
+          <QuestionModeOption count={0} label="Marked" />
+          <QuestionModeOption count={0} label="Omitted" />
+          <QuestionModeOption count={0} label="Correct" />
+        </div>
+      </fieldset>
 
       <FilterPicker
         label="Subjects"
         options={statsState.data.subjects}
         selected={form.subjects}
+        onSelectAll={() => setForm((current) => ({ ...current, subjects: [] }))}
         onToggle={(key) => toggle('subjects', key)}
       />
       <FilterPicker
         label="Systems"
         options={statsState.data.systems}
         selected={form.systems}
+        onSelectAll={() => setForm((current) => ({ ...current, systems: [] }))}
         onToggle={(key) => toggle('systems', key)}
       />
 
-      <div className="flex justify-end">
-        <button className="btn btn-primary" disabled={submitting} type="submit">
+      <footer className="surface-sticky -mx-4 mt-2 flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-end sm:justify-between md:-mx-8 md:px-8">
+        <label className="form-control flex-row items-center gap-3">
+          <span className="label-text whitespace-nowrap font-bold">No. of Questions</span>
+          <input
+            className="input input-bordered input-sm w-20 text-center"
+            max={maxQuestions}
+            min="1"
+            type="number"
+            value={form.questionCount}
+            onChange={(event) => setForm({ ...form, questionCount: event.target.value })}
+          />
+          <span className="text-caption text-muted whitespace-nowrap">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
+        </label>
+        <button className="btn btn-primary min-w-40" disabled={submitting || maxQuestions === 0} type="submit">
           {submitting ? <span className="loading loading-spinner loading-sm" /> : null}
           Generate Test
         </button>
-      </div>
+      </footer>
     </form>
   )
 }
 
-function FilterPicker({ label, options = [], selected = [], onToggle }) {
+function QuestionModeOption({ count, label, selected = false }) {
   return (
-    <section className="surface-raised rounded-lg border p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-h3">{label}</h2>
-        <span className="badge badge-outline">{selected.length === 0 ? 'All selected' : `${selected.length} selected`}</span>
-      </div>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+    <label className={`label justify-start gap-2 ${selected ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
+      <input className="checkbox checkbox-primary checkbox-sm" checked={selected} disabled={!selected} readOnly type="checkbox" />
+      <span className="label-text">{label}</span>
+      <span className="badge badge-outline badge-sm">{count}</span>
+    </label>
+  )
+}
+
+function FilterPicker({ label, options = [], selected = [], onSelectAll, onToggle }) {
+  return (
+    <fieldset className="border-b border-base-300 pb-6 last:border-0">
+      <legend className="text-h6 mb-3">Question {label}</legend>
+      <label className="label mb-2 w-fit cursor-pointer justify-start gap-3">
+        <input className="checkbox checkbox-primary checkbox-sm" checked={selected.length === 0} onChange={onSelectAll} type="checkbox" />
+        <span className="label-text font-bold">{label}</span>
+        <span className="badge badge-ghost badge-sm">{selected.length === 0 ? 'All' : selected.length}</span>
+      </label>
+      <div className="grid gap-x-12 gap-y-1 pl-0 sm:pl-7 md:grid-cols-2">
         {options.map((option) => (
-          <label className="label cursor-pointer justify-start gap-3 rounded border border-base-300 px-3" key={option.key}>
+          <label className="label min-w-0 cursor-pointer justify-start gap-3 py-2" key={option.key}>
             <input
               className="checkbox checkbox-primary checkbox-sm"
               checked={selected.includes(option.key)}
@@ -453,11 +399,11 @@ function FilterPicker({ label, options = [], selected = [], onToggle }) {
               onChange={() => onToggle(option.key)}
             />
             <span className="label-text min-w-0 flex-1 truncate">{option.label}</span>
-            <span className="badge badge-ghost">{option.totalQuestions}</span>
+            <span className="badge badge-outline badge-sm">{option.totalQuestions}</span>
           </label>
         ))}
       </div>
-    </section>
+    </fieldset>
   )
 }
 
@@ -931,10 +877,14 @@ function HomePage({ page = 'dashboard' }) {
     <DrawerShell
       account={(
         <AccountPanel
+          onLogout={auth.logout}
+        />
+      )}
+      accountIdentity={(
+        <AccountIdentity
           badge={{ className: getPlanBadgeClass(currentPlan), label: currentPlan === 'plus' ? 'Plus' : 'Free' }}
           caption="Nursing learner"
           name={user.name}
-          onLogout={auth.logout}
         />
       )}
       brand={brand}

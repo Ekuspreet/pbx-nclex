@@ -95,7 +95,12 @@ function ExplanationPanel({ html, hidden = false, className = '' }) {
 
   return (
     <div className={`overflow-scroll ${className}`} hidden={hidden} ref={panelRef}>
-      <p className="my-2 text-md font-semibold">Explanation</p>
+      <div className="mb-[20px] flex items-end">
+        <h2 className="rounded-t border border-b-0 border-base-300 px-4 py-2 font-normal">
+          Explanation
+        </h2>
+        <div className="min-w-0 flex-1 border-b border-base-300" aria-hidden="true" />
+      </div>
       <ReferenceHtml html={normalizedHtml} className="space-y-2" />
     </div>
   )

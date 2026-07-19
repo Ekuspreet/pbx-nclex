@@ -6,11 +6,10 @@ function BrandLogo({ brand, className = '' }) {
       aria-label={brand.name}
     >
       <img
-        className="size-22 flex-none object-contain"
+        className="h-20 w-auto max-w-28 flex-none object-contain sm:max-w-32"
         src={brand.logoSrc}
         alt={brand.logoAlt}
       />
-
     </a>
   )
 }

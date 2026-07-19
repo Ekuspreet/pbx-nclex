@@ -110,7 +110,7 @@ function McqQuestionPage({ question, answer, submitted, onChange }) {
         <ExhibitButtons exhibits={question.exhibits || []} />
         <ReferenceHtml
           as="p"
-          className="mt-2 text-sm font-semibold"
+          className="mt-2 font-semibold"
           html={stripExhibitLink(question.questionText)}
         />
         <div className="form-control ml-2 mt-2 flex flex-col space-y-1">
@@ -132,7 +132,7 @@ function McqQuestionPage({ question, answer, submitted, onChange }) {
                   disabled={submitted}
                 />
                 <span className="ml-2">{index + 1}.</span>
-                <span className="label-text text-sm" dangerouslySetInnerHTML={{ __html: choice.choice }} />
+                <span className="label-text" dangerouslySetInnerHTML={{ __html: choice.choice }} />
               </label>
             )
           })}

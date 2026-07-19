@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { brand } from '../content/landing/index.js'
 import { apiRequest } from '../services/apiClient.js'
-import DrawerShell, { AccountPanel } from '../ui/layout/DrawerShell.jsx'
+import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
 import ExamQuestionPreviewModal from '../ui/questionnaire/ExamQuestionPreviewModal.jsx'
 
 export const ADMIN_ROUTE = '/admin/f6bf13fb-5774-43e7-aef4-57bb4298967f'
@@ -127,10 +127,14 @@ function Layout({ children, title }) {
     <DrawerShell
       account={(
         <AccountPanel
+          onLogout={admin.logout}
+        />
+      )}
+      accountIdentity={(
+        <AccountIdentity
           badge={{ className: 'badge-outline', label: 'Admin' }}
           caption="Admin workspace"
           name={admin.admin?.username || 'Admin'}
-          onLogout={admin.logout}
         />
       )}
       brand={brand}
