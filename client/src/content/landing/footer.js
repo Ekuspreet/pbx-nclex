@@ -1,24 +1,22 @@
 import { brand } from './navigation.js'
+import { business } from '../business.js'
 
 export const footer = {
   brand,
   groups: [
     {
-      title: 'Page',
+      title: 'Policies',
       links: [
-        { label: 'Home', href: '/' },
-        { label: 'Features', href: '/#features' },
-        { label: 'Access', href: '/#access' },
-        { label: 'Join', href: '/#join' },
+        { label: 'Terms & Conditions', href: '/terms-and-conditions' },
+        { label: 'Privacy Policy', href: '/privacy-policy' },
+        { label: 'Return & Refund Policy', href: '/return-refund-policy' },
+        { label: 'Cancellation Policy', href: '/cancellation-policy' },
+        { label: 'Disclaimer', href: '/disclaimer' },
       ],
     },
-    {
-      title: 'Access',
-      links: [
-        { label: 'Sign up', href: '/signup' },
-        { label: 'Log in', href: '/login' },
-      ],
-    },
+    { title: 'Company', links: [{ label: 'About Us', href: '/about-us' }] },
   ],
+  legalName: business.legalName,
+  registeredAddress: business.registeredAddress,
   copyright: 'Copyright 2026 PBX Nursing. All rights reserved.',
 }

@@ -1,4 +1,5 @@
 import BrandLogo from './BrandLogo.jsx'
+import { Link } from 'react-router-dom'
 
 function LandingFooter({ footer }) {
   return (
@@ -15,6 +16,22 @@ function LandingFooter({ footer }) {
         <p className="mt-3 max-w-md text-caption text-inverse-muted">
           {footer.footnote}
         </p>
+
+        <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-8 border-t border-neutral-content/15 pt-8 text-left md:grid-cols-2">
+          {footer.groups.map((group) => (
+            <nav key={group.title} aria-label={group.title}>
+              <h2 className="font-bold text-neutral-content">{group.title}</h2>
+              <ul className="mt-3 grid gap-2">
+                {group.links.map((link) => <li key={link.label}><Link className="text-sm text-neutral-content/70 hover:text-neutral-content" to={link.href}>{link.label}</Link></li>)}
+              </ul>
+            </nav>
+          ))}
+        </div>
+
+        <div className="mt-8 max-w-3xl text-caption text-inverse-muted">
+          <p><strong>Legal name:</strong> {footer.legalName}</p>
+          <p className="mt-1"><strong>Registered address:</strong> {footer.registeredAddress}</p>
+        </div>
 
         <div className="mt-8 w-full border-t border-neutral-content/15 pt-5">
           <p className="text-caption text-inverse-muted">

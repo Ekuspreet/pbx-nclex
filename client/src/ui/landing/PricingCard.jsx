@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { Link } from 'react-router-dom'
 import { cardIntro, softHover } from '../../motion/landingPresets.js'
 import { getButtonClass } from './buttonClass.js'
 
@@ -29,13 +30,13 @@ function PricingCard({ plan }) {
           ))}
         </ul>
         <div className="card-actions mt-auto">
-          <a
+          <Link
             className={getButtonClass(plan.cta.variant)}
-            href={plan.cta.href}
+            to={plan.cta.href}
             aria-label={plan.cta.ariaLabel}
           >
             {plan.cta.label}
-          </a>
+          </Link>
         </div>
       </div>
     </motion.article>

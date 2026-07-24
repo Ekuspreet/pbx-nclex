@@ -4,24 +4,27 @@ function TestNavbar({ marked, onCalculator, onDecreaseText, onFeedback, onFullsc
   const [textControlsOpen, setTextControlsOpen] = useState(false)
 
   return (
-    <nav className="flex justify-between border-t-2 border-test-bar-content bg-test-toolbar text-lg text-test-bar-content" aria-label="Test tools">
-      <div className="flex items-stretch font-semibold">
-        <button type="button" className="flex place-items-center gap-1 p-2 hover:bg-test-bar-hover" onClick={onNotes}>
-          <span className="material-symbols-outlined">add_notes</span> Notes
+    <nav className="flex min-h-10 shrink-0 flex-wrap justify-between bg-test-toolbar text-[17px] font-bold text-test-bar-content" aria-label="Test tools">
+      <div className="flex w-full flex-wrap items-stretch sm:w-auto">
+        <button type="button" className="flex min-h-10 items-center gap-1 border-r-2 border-test-bar-content px-4 hover:text-test-bar-hover" onClick={onNotes}>
+          <span className="material-symbols-outlined !text-[18px]">note_alt</span> Notes
         </button>
-        <button type="button" className="flex place-items-center gap-1 p-2 hover:bg-test-bar-hover" onClick={onCalculator}>
-          <span className="material-symbols-outlined">calculate</span> Calculator
+        <button type="button" className="flex min-h-10 items-center gap-1 border-r-2 border-test-bar-content px-4 hover:text-test-bar-hover" onClick={onCalculator}>
+          <span className="material-symbols-outlined !text-[18px]">calculate</span> Calc.
         </button>
-        <button type="button" className="flex place-items-center gap-1 p-2 hover:bg-test-bar-hover" onClick={onFeedback}>
-          <span className="material-symbols-outlined">feedback</span> Feedback
+        <button type="button" className="flex min-h-10 items-center gap-1 px-4 hover:text-test-bar-hover" onClick={onFeedback}>
+          <span className="material-symbols-outlined !text-[18px]">forum</span> Feedback
         </button>
       </div>
-      <div className="relative flex items-stretch font-semibold">
+      <div className="relative flex w-full flex-wrap items-stretch justify-end border-t border-test-bar-content/40 sm:w-auto sm:border-t-0">
+        <button type="button" aria-label="Toggle fullscreen" className="flex min-h-10 items-center border-l-2 border-test-bar-content px-4 hover:text-test-bar-hover" onClick={onFullscreen}>
+          <span className="material-symbols-outlined !text-[19px]">fullscreen</span>
+        </button>
         <button
           type="button"
           aria-expanded={textControlsOpen}
           aria-label="Adjust question text size"
-          className="flex place-items-center p-2 hover:bg-test-bar-hover"
+          className="flex min-h-10 items-center border-l-2 border-test-bar-content px-4 hover:text-test-bar-hover"
           onClick={() => setTextControlsOpen((open) => !open)}
         >
           <span className="material-symbols-outlined">text_fields</span>
@@ -53,14 +56,11 @@ function TestNavbar({ marked, onCalculator, onDecreaseText, onFeedback, onFullsc
             </button>
           </div>
         ) : null}
-        <button type="button" aria-label="Toggle fullscreen" className="flex place-items-center p-2 hover:bg-test-bar-hover" onClick={onFullscreen}>
-          <span className="material-symbols-outlined">fullscreen</span>
+        <button type="button" aria-label="Toggle color theme" className="flex min-h-10 items-center border-l-2 border-test-bar-content px-4 hover:text-test-bar-hover" onClick={onTheme}>
+          <span className="material-symbols-outlined !text-[19px]">dark_mode</span>
         </button>
-        <button type="button" aria-label="Toggle color theme" className="flex place-items-center p-2 hover:bg-test-bar-hover" onClick={onTheme}>
-          <span className="material-symbols-outlined">contrast</span>
-        </button>
-        <button type="button" aria-pressed={marked} className={`p-2 hover:bg-test-bar-hover ${marked ? 'bg-warning/30' : ''}`} onClick={onMark}>
-          Mark for Review
+        <button type="button" aria-pressed={marked} className={`flex min-h-10 items-center gap-1 border-l-2 border-test-bar-content px-4 hover:text-test-bar-hover ${marked ? 'text-test-bar-hover' : ''}`} onClick={onMark}>
+          <span className="material-symbols-outlined !text-[18px]">flag</span> Mark for Review
         </button>
       </div>
     </nav>

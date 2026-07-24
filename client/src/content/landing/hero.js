@@ -12,7 +12,7 @@ export const hero = {
     label: 'Log in',
     href: '/login',
     ariaLabel: 'Go to login access for PBX Nursing',
-    variant: 'secondary',
+    variant: 'primary',
   },
   media: {
     videos: [

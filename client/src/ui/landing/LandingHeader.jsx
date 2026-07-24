@@ -12,20 +12,21 @@ function LandingHeader({ brand, navigation }) {
 
         <div className="navbar-end gap-3">
           <div className=" flex items-center gap-3 ">
-            <a
+            <Link className="btn btn-ghost" to="/about-us">About Us</Link>
+            <Link
               className={getButtonClass(navigation.login.variant)}
-              href={navigation.login.href}
+              to={navigation.login.href}
               aria-label={navigation.login.ariaLabel}
             >
               {navigation.login.label}
-            </a>
-            <a
+            </Link>
+            <Link
               className={getButtonClass(navigation.signup.variant)}
-              href={navigation.signup.href}
+              to={navigation.signup.href}
               aria-label={navigation.signup.ariaLabel}
             >
               {navigation.signup.label}
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -34,3 +35,4 @@ function LandingHeader({ brand, navigation }) {
 }
 
 export default LandingHeader
+import { Link } from 'react-router-dom'

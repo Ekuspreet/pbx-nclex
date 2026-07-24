@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import ExplanationPanel from './ExplanationPanel.jsx'
 import ReferenceHtml from './ReferenceHtml.jsx'
 import { getCorrectAnswer, stripExhibitLink } from './questionHelpers.js'
@@ -105,10 +106,10 @@ function QuestionExhibits({ exhibits = [] }) {
     <PreviewSection title="Exhibits">
       <div className="flex flex-wrap gap-2">
         {firstExhibit.baseUrl && firstExhibit.fileName ? (
-          <a className="btn btn-outline btn-sm" href={`${firstExhibit.baseUrl}${firstExhibit.fileName}`} rel="noreferrer" target="_blank">
+          <Link className="btn btn-outline btn-sm" to={`${firstExhibit.baseUrl}${firstExhibit.fileName}`} rel="noreferrer" target="_blank">
             <span className="material-symbols-outlined">open_in_new</span>
             Exhibit
-          </a>
+          </Link>
         ) : (
           <span className="badge badge-outline h-auto py-2">Exhibit</span>
         )}

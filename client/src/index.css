@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Open Sans", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --color-test-bar: #0067a9;
   --color-test-toolbar: #7cafe8;
   --color-test-bar-content: #ffffff;
   --color-test-bar-hover: #ffd54f;
+  --color-calculator-case-top: #2a63c6;
+  --color-calculator-case-mid: #2359b7;
+  --color-calculator-case-bottom: #1e4ea5;
+  --color-calculator-border: #163f8f;
+  --color-calculator-key-red: #be1430;
+  --color-calculator-key-white: #eef1f6;
+  --color-calculator-key-content: #101726;
+  --color-calculator-display-top: #d7d8cd;
+  --color-calculator-display-bottom: #c2c7b5;
 }
 
 @plugin "daisyui" {
@@ -15,24 +24,35 @@
 @plugin "daisyui/theme" {
   name: "nord";
   --color-base-100: #ffffff;
-  --color-base-200: #ffffff;
+  --color-base-200: #f8fafc;
+  --color-base-300: #e2e8f0;
+  --color-base-content: #1e293b;
+  --color-neutral: #0f172a;
+  --color-neutral-content: #f8fafc;
+  --color-primary: #2563eb;
   --color-primary-content: #ffffff;
+  --color-secondary: #7c3aed;
   --color-secondary-content: #ffffff;
+  --color-accent: #3b82f6;
+  --color-accent-content: #ffffff;
+  --color-info: #3b82f6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
 }
 
 @layer base {
   :root {
-    font-family: "Open Sans", sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-style: normal;
-    font-weight: 300;
+    font-weight: 400;
     font-stretch: 100%;
   }
 
   body,
-  body *:not(.material-symbols-outlined) {
-    font-family: "Open Sans", sans-serif !important;
+  body *:not(.material-symbols-outlined):not(.landing-page):not(.landing-page *):not(.test-page):not(.test-page *) {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     font-style: normal !important;
-    font-weight: 300 !important;
     font-stretch: 100% !important;
   }
 
@@ -49,155 +69,114 @@
 }
 
 @layer components {
+  .test-page,
+  .test-page *:not(.material-symbols-outlined) {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .circular-progress-trace {
+    stroke-dashoffset: 100;
+    animation: circular-progress-trace 1.4s cubic-bezier(0.22, 1, 0.36, 1) var(--trace-delay, 0ms) forwards;
+  }
+
+  @keyframes circular-progress-trace {
+    to {
+      stroke-dashoffset: var(--progress-offset, 100);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .circular-progress-trace {
+      animation: none;
+      stroke-dashoffset: var(--progress-offset, 100);
+    }
+  }
+
   .test-adjustable-text :where(h1, h2, h3, h4, h5, h6, p, span, label, li, td, th, button, a):not(.material-symbols-outlined) {
     font-size: inherit !important;
   }
 
   .calculator-overlay {
-    @apply fixed inset-0 z-50 grid place-items-center bg-neutral/60 p-2;
+    @apply pointer-events-none fixed inset-0 z-50;
   }
 
-  .ti-window {
-    width: 238px;
-    overflow: hidden;
-    border: 1px solid #075781;
-    border-radius: 0 0 14px 14px;
-    background: #126d9e;
-    box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
-    color: white;
+  .source-calculator {
+    position: fixed;
+    top: 120px;
+    left: 88px;
+    z-index: 10000;
+    width: 244px;
+    padding: 10px 10px 14px;
+    border: 2px solid var(--color-calculator-border);
+    border-radius: 8px 8px 18px 18px;
+    background: linear-gradient(180deg, var(--color-calculator-case-top) 0%, var(--color-calculator-case-mid) 54%, var(--color-calculator-case-bottom) 100%);
+    box-shadow: 0 16px 28px rgb(18 33 76 / 32%);
+    pointer-events: auto;
     user-select: none;
   }
 
-  .ti-window-bar {
+  .source-calculator-close {
+    position: absolute;
+    top: -10px;
+    right: -10px;
     display: grid;
-    grid-template-columns: 18px 1fr 18px;
-    align-items: center;
-    height: 45px;
-    padding: 0 6px;
-    font-family: Georgia, serif !important;
-    font-size: 16px;
-  }
-
-  .ti-window-bar button {
-    display: grid;
-    width: 15px;
-    height: 15px;
+    width: 24px;
+    height: 24px;
     place-items: center;
-    border: 1px solid white;
-    border-radius: 1px;
-    color: white;
-    font: 16px/11px Arial, sans-serif !important;
-  }
-
-  .ti-window-icon {
-    width: 15px;
-    height: 20px;
-    border: 2px solid white;
-    border-radius: 4px;
-    box-shadow: inset 0 4px 0 rgb(255 255 255 / 20%);
-  }
-
-  .ti-window-strip {
-    height: 23px;
-    border-block: 1px solid #315e8f;
-    background: #527db9;
-  }
-
-  .ti-calculator {
-    min-height: 374px;
-    padding: 0 10px 8px;
-    border-radius: 0 0 13px 13px;
-    background: #577fba;
-  }
-
-  .ti-display {
-    display: block;
-    height: 47px;
-    margin: 0 17px;
-    overflow: hidden;
-    border: 2px solid #506174;
-    border-radius: 2px;
-    background: #fff;
-    color: #070707;
-    font: italic 36px/43px "Courier New", monospace !important;
-    letter-spacing: -3px;
-    text-align: right;
-    white-space: nowrap;
-  }
-
-  .ti-brand-row {
-    display: flex;
-    height: 72px;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 4px 0 0 2px;
-    color: white;
-  }
-
-  .ti-brand-row strong {
-    font: 700 24px/26px "Courier New", monospace !important;
-    letter-spacing: -2px;
-  }
-
-  .ti-brand {
-    padding-top: 2px;
-    font: 700 9px/12px Georgia, serif !important;
-    white-space: nowrap;
-  }
-
-  .ti-brand b {
-    display: inline-block;
-    margin-right: 3px;
-    font-size: 11px !important;
-    transform: skew(-12deg);
-  }
-
-  .ti-key-bed {
-    display: grid;
-    grid-template-columns: repeat(4, 38px);
-    grid-auto-rows: 27px;
-    gap: 11px 8px;
-    justify-content: center;
-    padding: 7px 6px 7px;
-    border: 1px solid #245486;
-    border-radius: 7px;
-    box-shadow: inset 0 1px 2px rgb(255 255 255 / 30%);
-  }
-
-  .ti-key {
     border: 0;
-    border-radius: 2px;
-    box-shadow: 0 1px 1px rgb(0 0 0 / 35%);
-    font: 700 14px/1 Arial, sans-serif !important;
-    text-align: left;
-    padding: 0 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-calculator-key-content) 92%, transparent);
+    color: var(--color-test-bar-content);
+    cursor: pointer;
   }
 
-  .ti-key:active {
+  .source-calculator-display {
+    width: 100%;
+    height: 44px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 3px;
+    outline: 0;
+    background: linear-gradient(180deg, var(--color-calculator-display-top) 0%, var(--color-calculator-display-bottom) 100%);
+    color: var(--color-calculator-key-content);
+    font: 700 34px/1 "Courier New", monospace !important;
+    text-align: right;
+  }
+
+  .source-calculator-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .source-calculator-key {
+    height: 39px;
+    border: 1px solid var(--color-calculator-key-content);
+    border-radius: 5px;
+    font-size: 21px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .source-calculator-key:active {
     transform: translateY(1px);
-    box-shadow: none;
   }
 
-  .ti-key-red {
-    background: #e51c2b;
-    color: white;
+  .source-calculator-key-red {
+    background: var(--color-calculator-key-red);
+    color: var(--color-test-bar-content);
   }
 
-  .ti-key-white {
-    background: #fff;
-    color: #1e2630;
+  .source-calculator-key-white {
+    background: var(--color-calculator-key-white);
+    color: var(--color-calculator-key-content);
   }
 
-  .ti-key-small {
-    padding-inline: 4px;
-    font-size: 12px !important;
-  }
-
-  .ti-key-tall {
+  .source-calculator-key-equals {
     grid-row: span 2;
-    height: 65px;
-    align-self: stretch;
-    padding-top: 7px;
+    height: auto;
+    min-height: 86px;
+    font-size: 30px;
   }
 
   .reference-html p {

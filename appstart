@@ -1,0 +1,1 @@
+x-terminal-emulator --title="PBX NCLEX Server" -- bash -lc 'cd "$HOME/Github/pbx-nclex/server" && npm run dev; exec bash' & x-terminal-emulator --title="PBX NCLEX Client" -- bash -lc 'cd "$HOME/Github/pbx-nclex/client" && npm run dev; exec bash'

@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom'
+
 function BrandLogo({ brand, className = '' }) {
   return (
-    <a
+    <Link
       className={`inline-flex min-w-0 items-center gap-3 no-underline ${className}`}
-      href="/"
+      to="/"
       aria-label={brand.name}
     >
       <img
@@ -10,7 +12,7 @@ function BrandLogo({ brand, className = '' }) {
         src={brand.logoSrc}
         alt={brand.logoAlt}
       />
-    </a>
+    </Link>
   )
 }
 

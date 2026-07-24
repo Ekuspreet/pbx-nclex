@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import { brand, pricing } from '../content/landing/index.js'
 import {
   createTest,
   deleteHighlight,
-  deleteNote,
   getDashboard,
   getFeedback,
   getQuestionStats,
@@ -17,37 +16,26 @@ import {
 } from '../services/studyAdapter.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
 import QuestionPreviewModal from '../ui/questionnaire/QuestionPreviewModal.jsx'
+import { NotebookViewer } from '../features/test/components/NotesModal.jsx'
 
-const navGroups = [
-  {
-    label: 'Tests',
-    items: [
-      { label: 'Dashboard', href: '/home', icon: 'dashboard', end: true },
-      { label: 'Create Test', href: '/tests/create', icon: 'add_circle' },
-      { label: 'Tests', href: '/tests', icon: 'fact_check' },
-    ],
-  },
-  {
-    label: 'Study Tools',
-    items: [
-      { label: 'Notes', href: '/notes', icon: 'notes' },
-      { label: 'Highlights', href: '/highlights', icon: 'stylus_note' },
-      { label: 'Feedback', href: '/feedback', icon: 'feedback' },
-    ],
-  },
-  {
-    label: 'Billing',
-    items: [
-      { label: 'Pricing', href: '/pricing', icon: 'workspace_premium' },
-      { label: 'Payment', href: '/payment', icon: 'payments' },
-    ],
-  },
-]
+const navGroups = [{
+  label: 'Menu',
+  items: [
+    { label: 'Dashboard', href: '/home', icon: 'dashboard', end: true },
+    { label: 'Performance', href: '/performance', icon: 'analytics' },
+    { label: 'Create Test', href: '/tests/create', icon: 'add_circle' },
+    { label: 'Previous Tests', href: '/tests', icon: 'description', end: true },
+    { label: 'Notes', href: '/notes', icon: 'format_list_bulleted' },
+    { label: 'Feedback', href: '/feedback', icon: 'chat_bubble_outline' },
+  ],
+}]
 
 const pageContent = {
-  dashboard: { eyebrow: 'Dashboard', title: 'Statistics' },
+  dashboard: { eyebrow: 'Dashboard', title: '' },
+  performance: { eyebrow: 'Performance', title: 'Performance' },
+  profile: { eyebrow: 'Profile', title: '' },
   createTest: { eyebrow: 'Tests', title: 'Create Test' },
-  tests: { eyebrow: 'Tests', title: 'Tests' },
+  tests: { eyebrow: 'Tests', title: '' },
   pricing: { eyebrow: 'Pricing', title: 'Pricing' },
   payment: { eyebrow: 'Payment', title: 'Upgrade to Plus' },
   feedback: { eyebrow: 'Feedback', title: 'Feedback' },
@@ -94,38 +82,54 @@ function getPercent(value, total) {
   return `${Math.round((value / total) * 100)}%`
 }
 
-function ProgressRing({ label, value, color = 'text-primary' }) {
-  const progress = Math.min(Math.max(asCount(value), 0), 100)
+function PerformanceOverview({ rows, total }) {
+  const radii = [92, 79, 66, 53, 40, 27]
+
   return (
-    <div className="relative mx-auto size-40 shrink-0 md:size-44">
-      <svg aria-label={`${label}: ${progress}%`} className="size-full -rotate-90" role="img" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" fill="none" r="16" stroke="currentColor" strokeWidth="2.5" className="text-base-300" />
-        <circle cx="20" cy="20" fill="none" pathLength="100" r="16" stroke="currentColor" strokeDasharray={`${progress} ${100 - progress}`} strokeLinecap="butt" strokeWidth="2.5" className={color} />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <span className="text-3xl text-base-content/70">{progress}%</span>
+    <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-8 md:px-10 md:py-9" aria-label="Performance overview">
+      <div className="grid items-center gap-8 lg:grid-cols-[340px_400px] lg:gap-10">
+        <svg className="mx-auto size-64 overflow-visible md:size-72" role="img" viewBox="0 0 220 220" aria-label="Question performance rings">
+          <g transform="rotate(-90 110 110)">
+            {rows.map((row, index) => (
+              <circle
+                className={`circular-progress-trace ${row.color}`}
+                cx="110"
+                cy="110"
+                fill="none"
+                key={row.label}
+                pathLength="100"
+                r={radii[index]}
+                stroke="currentColor"
+                strokeDasharray="100"
+                strokeLinecap="round"
+                strokeWidth="7"
+                style={{ '--progress-offset': 100 - row.percent, '--trace-delay': `${index * 90}ms` }}
+              />
+            ))}
+          </g>
+        </svg>
+
+        <div className="w-full max-w-[400px]">
+          <h2 className="mb-5 text-lg font-bold text-base-content">Performance Overview</h2>
+          <dl className="grid gap-4">
+            {rows.map((row) => (
+              <div className="flex items-center justify-between gap-8" key={row.label}>
+                <dt className="text-sm text-base-content/80">{row.label}</dt>
+                <dd className={`min-w-16 rounded-full px-3 py-1 text-center text-xs font-bold text-white shadow-sm ${row.badge}`}>{row.percent}%</dd>
+              </div>
+            ))}
+            <div className="mt-1 flex items-center justify-between gap-8 border-t border-base-300 pt-4">
+              <dt className="text-sm font-bold text-base-content">Total Questions</dt>
+              <dd className="min-w-16 rounded-full bg-neutral px-3 py-1 text-center text-xs font-bold text-neutral-content shadow-sm">{total}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
 
-function MetricList({ title, rows }) {
-  return (
-    <div className="min-w-0 flex-1">
-      <h2 className="text-h6 mb-3">{title}</h2>
-      <dl className="grid gap-3">
-        {rows.map((row) => (
-          <div className="flex items-center justify-between gap-4" key={row.label}>
-            <dt className="text-muted">{row.label}</dt>
-            <dd><span className="badge badge-ghost badge-sm min-w-7">{row.value}</span></dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  )
-}
-
-function DashboardPageContent() {
+function PerformancePageContent() {
   const [state, setState] = useState({ loading: true, error: '', data: null })
 
   useEffect(() => {
@@ -149,36 +153,66 @@ function DashboardPageContent() {
 
   const { data } = state
   const total = asCount(data.totalQuestions)
-  const used = asCount(data.attemptedQuestions)
+  const used = asCount(data.usedQuestions ?? data.attemptedQuestions)
   const correct = asCount(data.correctQuestions)
   const incorrect = asCount(data.incorrectQuestions)
-  const omitted = Math.max(used - correct - incorrect, 0)
-  const performanceTotal = correct + incorrect + omitted
+  const partiallyIncorrect = asCount(data.partiallyIncorrectQuestions)
+  const omitted = asCount(data.omittedQuestions ?? Math.max(used - correct - incorrect, 0))
+  const percent = (value, denominator) => denominator > 0 ? Math.round((value / denominator) * 100) : 0
+  const overviewRows = [
+    { label: 'Unused Questions', percent: percent(Math.max(total - used, 0), total), color: 'text-base-content/45', badge: 'bg-base-content/45' },
+    { label: 'Correct', percent: percent(correct, total), color: 'text-success', badge: 'bg-success' },
+    { label: 'Incorrect', percent: percent(incorrect, total), color: 'text-error', badge: 'bg-error' },
+    { label: 'Partially Incorrect', percent: percent(partiallyIncorrect, total), color: 'text-warning', badge: 'bg-warning' },
+    { label: 'Omitted', percent: percent(omitted, total), color: 'text-neutral/75', badge: 'bg-neutral/75' },
+    { label: 'Used Questions', percent: percent(used, total), color: 'text-info', badge: 'bg-info' },
+  ]
 
   return (
     <div className="grid gap-10">
-      <section className="grid gap-10 xl:grid-cols-2 xl:gap-16" aria-label="Statistics summary">
-        <div className="flex flex-col items-center gap-8 sm:flex-row">
-          <ProgressRing color="text-success/40" label="Performance" value={getPercent(correct, performanceTotal).replace('%', '')} />
-          <MetricList title="Performance" rows={[
-            { label: 'Correct', value: correct },
-            { label: 'Incorrect', value: incorrect },
-            { label: 'Omitted', value: omitted },
-            { label: 'Scored Points', value: correct },
-            { label: 'Max Points', value: performanceTotal },
-          ]} />
-        </div>
-        <div className="flex flex-col-reverse items-center gap-8 sm:flex-row">
-          <MetricList title="QBank Usage" rows={[
-            { label: 'Used Questions', value: used },
-            { label: 'Unused Questions', value: Math.max(total - used, 0) },
-            { label: 'Total Questions', value: total },
-          ]} />
-          <ProgressRing color="text-info/40" label="QBank usage" value={getPercent(used, total).replace('%', '')} />
-        </div>
-      </section>
+      <PerformanceOverview rows={overviewRows} total={total} />
 
       <StatTable subjects={data.subjects} systems={data.systems} />
+    </div>
+  )
+}
+
+function DashboardPageContent({ user }) {
+  const name = user?.name || 'PBX learner'
+  const tiles = [
+    { href: '/performance', icon: 'analytics', title: 'Performance', copy: "See if you're ready to pass" },
+    { href: '/tests/create', icon: 'add_box', title: 'Create Test', copy: 'Study up to 85 questions at a time' },
+    { href: '/tests', icon: 'history', title: 'Previous Tests', copy: 'Review past test attempts' },
+    { href: '/notes', icon: 'description', title: 'Notebook', copy: 'See your custom Notes' },
+    { href: '/highlights', icon: 'ink_highlighter', title: 'Highlights', copy: 'Review your saved question highlights' },
+    { href: '/feedback', icon: 'chat_bubble_outline', title: 'Feedback', copy: 'View your question feedback threads' },
+    { href: '/pricing', icon: 'workspace_premium', title: 'Pricing', copy: 'Compare plans and membership benefits' },
+    { href: '/payment', icon: 'payments', title: 'Payment', copy: 'Upgrade or manage your subscription payment' },
+  ]
+
+  return (
+    <div className="grid gap-10">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold text-base-content md:text-3xl">Good Morning, {name}</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full border border-base-300 bg-base-100 py-1 pl-4 pr-1 text-sm font-semibold">
+            <span>22 days left</span>
+            <Link className="btn btn-secondary btn-sm rounded-full px-4" to="/pricing">Upgrade</Link>
+          </div>
+          <Link className="avatar avatar-placeholder" to="/profile"><div className="w-9 rounded-full bg-secondary/15 text-secondary"><span className="font-bold">{name[0]}</span></div></Link>
+        </div>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {tiles.map((tile) => (
+          <Link className="card border border-base-300 bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:border-base-content/25 hover:shadow-md" to={tile.href} key={tile.title}>
+            <div className="card-body min-h-28 flex-row items-start gap-4 p-6">
+              <div className="grid size-11 shrink-0 place-items-center rounded-box bg-base-200 text-primary"><span className="material-symbols-outlined">{tile.icon}</span></div>
+              <div className="min-w-0 flex-1"><h2 className="font-bold text-base-content">{tile.title}</h2><p className="mt-1 text-sm text-base-content/65">{tile.copy}</p></div>
+              <span className="text-xl text-base-content/45">›</span>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
@@ -188,7 +222,7 @@ function StatTable({ subjects = [], systems = [] }) {
   const rows = activeTab === 'subjects' ? subjects : systems
 
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
       <div className="tabs tabs-border mb-4" role="tablist" aria-label="Statistics category">
         {['subjects', 'systems'].map((tab) => (
           <button className={`tab px-6 capitalize ${activeTab === tab ? 'tab-active' : ''}`} key={tab} onClick={() => setActiveTab(tab)} role="tab" type="button">{tab}</button>
@@ -211,13 +245,13 @@ function StatTable({ subjects = [], systems = [] }) {
               <tr key={row.key}>
                 <td className="min-w-64">
                   <span>{row.label}</span>
-                  <progress className="progress progress-success mt-2 block h-1.5 w-full" max={row.totalQuestions || 1} value={row.attemptedQuestions} />
+                  <progress className="progress progress-success mt-2 block h-1.5 w-full" max={row.totalQuestions || 1} value={row.usedQuestions ?? row.attemptedQuestions} />
                 </td>
-                <td>{row.attemptedQuestions}/{row.totalQuestions}</td>
+                <td>{row.usedQuestions ?? row.attemptedQuestions}/{row.totalQuestions}</td>
                 <td>{row.correctQuestions} / {row.totalQuestions} ({getPercent(row.correctQuestions, row.totalQuestions)})</td>
-                <td>{row.correctQuestions} ({getPercent(row.correctQuestions, row.attemptedQuestions)})</td>
-                <td>{row.incorrectQuestions} ({getPercent(row.incorrectQuestions, row.attemptedQuestions)})</td>
-                <td>{Math.max(row.attemptedQuestions - row.correctQuestions - row.incorrectQuestions, 0)} ({getPercent(Math.max(row.attemptedQuestions - row.correctQuestions - row.incorrectQuestions, 0), row.attemptedQuestions)})</td>
+                <td>{row.correctQuestions} ({getPercent(row.correctQuestions, row.totalQuestions)})</td>
+                <td>{row.incorrectQuestions} ({getPercent(row.incorrectQuestions, row.totalQuestions)})</td>
+                <td>{row.omittedQuestions ?? 0} ({getPercent(row.omittedQuestions ?? 0, row.totalQuestions)})</td>
               </tr>
             ))}
             {rows.length === 0 ? (
@@ -238,7 +272,6 @@ function CreateTestPageContent() {
   const [form, setForm] = useState({
     tutorMode: true,
     timed: false,
-    showRationales: true,
     questionCount: 10,
     subjects: [],
     systems: [],
@@ -309,10 +342,6 @@ function CreateTestPageContent() {
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.timed} onChange={(event) => setForm({ ...form, timed: event.target.checked })} />
             <span className="label-text">Timed</span>
-          </label>
-          <label className="label cursor-pointer justify-start gap-3">
-            <input className="toggle toggle-primary" type="checkbox" checked={form.showRationales} onChange={(event) => setForm({ ...form, showRationales: event.target.checked })} />
-            <span className="label-text">Show Rationales</span>
           </label>
         </div>
       </fieldset>
@@ -408,7 +437,49 @@ function FilterPicker({ label, options = [], selected = [], onSelectAll, onToggl
 }
 
 function NotesPageContent() {
-  return <RecordsTable kind="notes" loader={listNotes} remover={deleteNote} />
+  const [state, setState] = useState({ loading: true, error: '', notes: [] })
+  const [openNotebook, setOpenNotebook] = useState(null)
+
+  useEffect(() => {
+    listNotes()
+      .then((payload) => setState({ loading: false, error: '', notes: payload.notes || [] }))
+      .catch((error) => setState({ loading: false, error: error.message, notes: [] }))
+  }, [])
+
+  if (state.loading) return <LoadingState />
+  if (state.error) return <ErrorState message={state.error} />
+
+  const notebooks = Array.from(state.notes.reduce((groups, note) => {
+    const key = note.testId || 'unassigned'
+    const current = groups.get(key) || { testId: note.testId, notes: [], updatedAt: note.updatedAt }
+    current.notes.push(note)
+    if (new Date(note.updatedAt) > new Date(current.updatedAt)) current.updatedAt = note.updatedAt
+    groups.set(key, current)
+    return groups
+  }, new Map()).values()).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+  return (
+    <>
+      <section className="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+        <table className="table">
+          <thead><tr><th className="w-28">Serial No.</th><th>Test ID</th><th>Notes</th><th>Updated</th><th /></tr></thead>
+          <tbody>
+            {notebooks.map((notebook, index) => (
+              <tr key={notebook.testId || 'unassigned'}>
+                <td className="font-bold">{index + 1}</td>
+                <td className="font-mono">{notebook.testId || 'Legacy notes'}</td>
+                <td>{notebook.notes.length}</td>
+                <td>{new Date(notebook.updatedAt).toLocaleString()}</td>
+                <td className="text-right"><button className="btn btn-primary" type="button" onClick={() => setOpenNotebook(notebook)}>Open Notebook</button></td>
+              </tr>
+            ))}
+            {notebooks.length === 0 ? <tr><td className="py-10 text-center text-base-content/60" colSpan="5">No test notebooks yet.</td></tr> : null}
+          </tbody>
+        </table>
+      </section>
+      {openNotebook ? <NotebookViewer notes={openNotebook.notes} onClose={() => setOpenNotebook(null)} /> : null}
+    </>
+  )
 }
 
 function HighlightsPageContent() {
@@ -707,69 +778,102 @@ function TestsPageContent() {
   const completed = state.tests.filter((test) => test.status === 'completed')
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-10">
+      <div>
+        <h1 className="text-3xl font-semibold text-base-content">Previous Tests</h1>
+        <div className="mt-2 border-b border-base-300" />
+      </div>
       <TestsTable
-        actionLabel="Continue"
         emptyMessage="No incomplete tests."
         tests={incomplete}
         title="Continue Tests"
-        toHref={(test) => `/tests/${test.id}`}
+        variant="continue"
       />
       <TestsTable
-        actionLabel="Review"
         emptyMessage="No completed tests yet."
         tests={completed}
         title="Completed Tests"
-        toHref={(test) => `/tests/${test.id}/result`}
+        variant="completed"
       />
     </div>
   )
 }
 
-function TestsTable({ actionLabel, emptyMessage, tests, title, toHref }) {
+function TestScoreRing({ value }) {
+  const percentage = Math.min(100, Math.max(0, asCount(value)))
+
   return (
-    <section className="surface-raised rounded-lg border p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-h3">{title}</h2>
-          <p className="text-caption text-muted">
-            {title === 'Continue Tests'
-              ? 'Resume tests that were paused, interrupted, or left unfinished.'
-              : 'Open completed tests to review your score and rationales.'}
-          </p>
-        </div>
-        {title === 'Continue Tests' ? (
-          <a className="btn btn-primary btn-sm" href="/tests/create">Create test</a>
-        ) : null}
-      </div>
+    <div className="relative size-[58px]">
+      <svg className="size-full -rotate-90 drop-shadow-sm" role="img" viewBox="0 0 58 58" aria-label={`${percentage}% scored`}>
+        <circle className="text-base-200" cx="29" cy="29" fill="none" r="25" stroke="currentColor" strokeWidth="6" />
+        <circle
+          className="circular-progress-trace text-success"
+          cx="29"
+          cy="29"
+          fill="none"
+          pathLength="100"
+          r="25"
+          stroke="currentColor"
+          strokeDasharray="100"
+          strokeLinecap="round"
+          strokeWidth="6"
+          style={{ '--progress-offset': 100 - percentage }}
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-xs font-bold text-base-content">{percentage}%</span>
+    </div>
+  )
+}
+
+function TestsTable({ emptyMessage, tests, title, variant }) {
+  const isCompleted = variant === 'completed'
+
+  return (
+    <section className="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+      <h2 className="mb-6 text-xl font-bold text-base-content">{title}</h2>
       <div className="overflow-x-auto">
-        <table className="table">
+        <table className="table min-w-[1050px]">
           <thead>
-            <tr>
-              <th>Updated</th>
-              <th>Status</th>
+            <tr className="border-base-300 text-xs uppercase text-base-content/75">
+              <th>% Scored</th>
               <th>Questions</th>
+              <th>Scored / Max</th>
+              <th>Created On</th>
               <th>Mode</th>
-              <th>Score</th>
+              <th>Test ID</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {tests.map((test) => (
-              <tr key={test.id}>
-                <td>{new Date(test.updatedAt).toLocaleString()}</td>
-                <td><span className="badge badge-outline">{test.status}</span></td>
+            {tests.map((test) => {
+              const correct = asCount(test.scoreSummary?.correct)
+              const max = asCount(test.questionCount)
+              const score = asCount(test.scoreSummary?.percentage ?? (max > 0 ? Math.round((correct / max) * 100) : 0))
+
+              return (
+              <tr className="border-base-300 text-sm text-base-content" key={test.id}>
+                <td className="py-5"><TestScoreRing value={score} /></td>
                 <td>{test.questionCount}</td>
-                <td>{test.tutorMode ? 'Tutor' : 'Test'} / {test.timed ? 'Timed' : 'Untimed'}</td>
-                <td>{test.status === 'completed' ? `${test.scoreSummary?.percentage ?? 0}%` : '-'}</td>
+                <td>{correct}/{max}</td>
+                <td>{new Date(test.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                <td>{test.tutorMode ? 'Tutored' : 'Untutored'}, {test.timed ? 'timed' : 'untimed'}</td>
+                <td className="max-w-52 truncate" title={test.id}>{test.id}</td>
                 <td className="text-right">
-                  <a className="btn btn-ghost btn-xs" href={toHref(test)}>{actionLabel}</a>
+                  {isCompleted ? (
+                    <div className="flex justify-end gap-3">
+                      <Link className="btn btn-primary h-[42px] w-[130px]" to={`/tests/${test.id}/result`}>Result</Link>
+                      <Link className="btn btn-primary h-[42px] w-[130px]" to={`/tests/${test.id}/review`}>Review</Link>
+                    </div>
+                  ) : (
+                    <Link className="btn btn-primary h-[42px] w-[130px]" to={`/tests/${test.id}`}>Continue</Link>
+                  )}
                 </td>
               </tr>
-            ))}
+              )
+            })}
             {tests.length === 0 ? (
               <tr>
-                <td colSpan="6">{emptyMessage}</td>
+                <td className="py-8 text-center text-base-content/60" colSpan="7">{emptyMessage}</td>
               </tr>
             ) : null}
           </tbody>
@@ -806,7 +910,7 @@ function WorkspacePlanCard({ plan, currentPlan }) {
           {isCurrent ? (
             <button className="btn btn-outline" type="button" disabled>Current plan</button>
           ) : (
-            <a className="btn btn-primary" href={href}>{plan.key === 'plus' ? 'Buy Plus' : 'Use Free'}</a>
+            <Link className="btn btn-primary" to={href}>{plan.key === 'plus' ? 'Buy Plus' : 'Use Free'}</Link>
           )}
         </div>
       </div>
@@ -854,8 +958,57 @@ function PaymentPageContent() {
   )
 }
 
-function PageBody({ page, currentPlan }) {
-  if (page === 'dashboard') return <DashboardPageContent />
+function ProfilePageContent({ currentPlan, onLogout, user }) {
+  const navigate = useNavigate()
+  const initial = user.name?.[0]?.toUpperCase() || 'U'
+  const profileRows = [
+    { icon: 'badge', label: 'Name', value: user.name },
+    { icon: 'mail', label: 'Email', value: user.email },
+    { icon: 'call', label: 'Contact', value: user.phone || 'Not provided' },
+  ]
+  const logout = async () => {
+    await onLogout()
+    navigate('/login', { replace: true })
+  }
+
+  return (
+    <div className="grid gap-8">
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+        <div className="flex items-center gap-4">
+          <div className="avatar avatar-placeholder"><div className="w-12 rounded-full bg-secondary/15 text-secondary"><span className="font-bold">{initial}</span></div></div>
+          <div><h1 className="text-xl font-bold">Good Morning, {user.name}</h1><p className="text-sm text-base-content/60">Manage your account and membership details</p></div>
+        </div>
+        <div className="flex gap-3">
+          <button className="btn btn-error h-[42px]" type="button" onClick={logout}><span className="material-symbols-outlined">logout</span>Log out</button>
+          <Link className="btn btn-primary h-[42px] w-[130px]" to="/home">Dashboard</Link>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+        <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">person</span><div><h2 className="font-bold text-base-content">Profile</h2><p className="text-sm text-base-content/60">Personal details</p></div></div>
+        {profileRows.map((row) => (
+          <div className="flex min-h-[70px] flex-wrap items-center justify-between gap-4 border-b border-base-200 last:border-0" key={row.label}>
+            <div className="flex items-center gap-4 text-base-content/80"><span className="material-symbols-outlined text-base-content/55">{row.icon}</span><span>{row.label}</span></div>
+            <strong className="text-sm">{row.value}</strong>
+          </div>
+        ))}
+      </section>
+
+      <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+        <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">card_membership</span><div><h2 className="font-bold text-base-content">Membership</h2><p className="text-sm text-base-content/60">View and manage your membership plan</p></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-base-200 p-5">
+          <div><div className="flex items-center gap-3"><strong>Plan - {currentPlan === 'plus' ? 'Plus' : 'Free'}</strong><span className="badge badge-success badge-sm">Active</span></div><p className="mt-1 text-sm text-base-content/60">Your current PBX Nursing membership</p></div>
+          <div className="flex flex-wrap items-center gap-8"><div className="text-right"><p className="text-xs font-bold uppercase text-base-content/60">Payment history</p><p className="text-sm text-base-content/80">View your subscription and billing options</p></div><Link className="btn btn-primary h-[42px] w-[140px]" to="/pricing">{currentPlan === 'plus' ? 'Renew Plan' : 'Upgrade'}</Link></div>
+        </div>
+      </section>
+
+    </div>
+  )
+}
+
+function PageBody({ page, currentPlan, onLogout, user }) {
+  if (page === 'dashboard') return <DashboardPageContent user={user} />
+  if (page === 'performance') return <PerformancePageContent />
   if (page === 'createTest') return <CreateTestPageContent />
   if (page === 'tests') return <TestsPageContent />
   if (page === 'feedback') return <FeedbackPageContent />
@@ -863,8 +1016,9 @@ function PageBody({ page, currentPlan }) {
   if (page === 'notes') return <NotesPageContent />
   if (page === 'pricing') return <PricingPageContent currentPlan={currentPlan} />
   if (page === 'payment') return <PaymentPageContent />
+  if (page === 'profile') return <ProfilePageContent currentPlan={currentPlan} onLogout={onLogout} user={user} />
 
-  return <DashboardPageContent />
+  return <DashboardPageContent user={user} />
 }
 
 function HomePage({ page = 'dashboard' }) {
@@ -877,7 +1031,7 @@ function HomePage({ page = 'dashboard' }) {
     <DrawerShell
       account={(
         <AccountPanel
-          onLogout={auth.logout}
+          name={user.name}
         />
       )}
       accountIdentity={(
@@ -885,14 +1039,16 @@ function HomePage({ page = 'dashboard' }) {
           badge={{ className: getPlanBadgeClass(currentPlan), label: currentPlan === 'plus' ? 'Plus' : 'Free' }}
           caption="Nursing learner"
           name={user.name}
+          to="/profile"
         />
       )}
       brand={brand}
       drawerId="home-drawer"
       navGroups={navGroups}
       title={content.title}
+      user={user}
     >
-      <PageBody currentPlan={currentPlan} page={page} />
+      <PageBody currentPlan={currentPlan} onLogout={auth.logout} page={page} user={user} />
     </DrawerShell>
   )
 }

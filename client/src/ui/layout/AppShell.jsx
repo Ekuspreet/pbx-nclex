@@ -4,7 +4,7 @@ import LandingHeader from '../landing/LandingHeader.jsx'
 
 function AppShell({ children, showFooter = true }) {
   return (
-    <div className="surface-page min-h-screen overflow-x-hidden" data-theme="nord">
+    <div className="landing-page surface-page min-h-screen overflow-x-hidden" data-theme="nord">
       <LandingHeader brand={brand} navigation={navigation} />
       {children}
       {showFooter ? <LandingFooter footer={footer} /> : null}

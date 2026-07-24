@@ -50,7 +50,7 @@ function CalculatorModal({ onClose }) {
     { label: '+/−', action: () => unary((value) => -value), tone: 'red' },
     { label: '√', action: () => unary((value) => Math.sqrt(value)), tone: 'red' },
     { label: '%', action: () => unary((value) => value / 100), tone: 'red' },
-    { label: '÷', action: () => operate('/'), tone: 'red' },
+    { label: '+', action: () => operate('+'), tone: 'red' },
     { label: 'MRC', action: () => { setDisplay(String(memory)); setFreshValue(true) }, tone: 'red', small: true },
     { label: 'M−', action: () => setMemory((value) => value - numericValue()), tone: 'red' },
     { label: 'M+', action: () => setMemory((value) => value + numericValue()), tone: 'red' },
@@ -61,28 +61,20 @@ function CalculatorModal({ onClose }) {
     { label: '+', action: () => operate('+'), tone: 'red' },
     { label: '1', action: () => append('1') }, { label: '2', action: () => append('2') }, { label: '3', action: () => append('3') },
     { label: '=', action: result, tone: 'red', tall: true },
-    { label: 'ON/C', action: clear, tone: 'red', small: true }, { label: '0', action: () => append('0') }, { label: '•', action: () => append('.') },
+    { label: 'ON/C', action: clear, tone: 'red' }, { label: '0', action: () => append('0') }, { label: '.', action: () => append('.') },
   ]
 
   return (
-    <div className="calculator-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="ti-window" role="dialog" aria-modal="true" aria-label="Texas Instruments TI-108 calculator">
-        <header className="ti-window-bar">
-          <span className="ti-window-icon" aria-hidden="true" />
-          <span>Calculator</span>
-          <button type="button" aria-label="Close calculator" onClick={onClose}>×</button>
-        </header>
-        <div className="ti-window-strip" />
-        <div className="ti-calculator">
-          <output className="ti-display" aria-live="polite">{display}</output>
-          <div className="ti-brand-row">
-            <span className="ti-brand"><b>TI</b> TEXAS INSTRUMENTS</span>
-            <strong>TI-108</strong>
-          </div>
-          <div className="ti-key-bed">
+    <div className="calculator-overlay" role="presentation">
+      <section className="source-calculator" role="dialog" aria-modal="false" aria-label="Calculator">
+        <button className="source-calculator-close" type="button" aria-label="Close calculator" onClick={onClose}>×</button>
+        <div className="mb-2.5">
+          <output className="source-calculator-display block overflow-hidden" aria-live="polite">{display}</output>
+        </div>
+          <div className="source-calculator-grid">
             {keys.map((key) => (
               <button
-                className={`ti-key ${key.tone === 'red' ? 'ti-key-red' : 'ti-key-white'}${key.tall ? ' ti-key-tall' : ''}${key.small ? ' ti-key-small' : ''}`}
+                className={`source-calculator-key ${key.tone === 'red' ? 'source-calculator-key-red' : 'source-calculator-key-white'}${key.tall ? ' source-calculator-key-equals' : ''}`}
                 key={key.label}
                 type="button"
                 onClick={key.action}
@@ -90,7 +82,6 @@ function CalculatorModal({ onClose }) {
                 {key.label}
               </button>
             ))}
-          </div>
         </div>
       </section>
     </div>

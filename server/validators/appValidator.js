@@ -22,7 +22,6 @@ const createTestSchema = z.object({
     subjects: z.array(z.string().trim().min(1)).default([]),
     systems: z.array(z.string().trim().min(1)).default([]),
     questionCount: z.number().int().min(1).max(80),
-    showRationales: z.boolean().default(true),
 });
 
 const answerSchema = z.union([
@@ -45,8 +44,7 @@ const updateQuestionStatusSchema = z.object({
 
 const updateTimerSchema = z.object({
     elapsedMs: z.number().int().min(0).optional(),
-    remainingMs: z.number().int().min(0).nullable().optional(),
-});
+}).strict();
 
 const listContextQuerySchema = z.object({
     testId: z.string().uuid().optional(),

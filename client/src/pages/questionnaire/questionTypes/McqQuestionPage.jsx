@@ -110,29 +110,28 @@ function McqQuestionPage({ question, answer, submitted, onChange }) {
         <ExhibitButtons exhibits={question.exhibits || []} />
         <ReferenceHtml
           as="p"
-          className="mt-2 font-semibold"
+          className="mt-2 leading-relaxed font-normal"
           html={stripExhibitLink(question.questionText)}
         />
-        <div className="form-control ml-2 mt-2 flex flex-col space-y-1">
-          {(question.answerChoiceList || []).map((choice, index) => {
+        <div className="form-control mt-3 flex flex-col gap-1">
+          {(question.answerChoiceList || []).map((choice) => {
             const isCorrect = String(choice.choiceNumber) === correctAnswer
             const isSelected = String(choice.choiceNumber) === String(answer ?? '')
             const showIndicator = submitted && (isCorrect || isSelected)
 
             return (
-              <label className="flex cursor-pointer items-center justify-start gap-2" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
+              <label className="flex min-h-10 cursor-pointer items-center justify-start gap-1" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
                 <AnswerIndicator show={showIndicator} correct={isCorrect} />
                 <input
                   type="radio"
                   name={`answer-${question.questionId}`}
-                  className="radio radio-neutral radio-xs"
+                  className="size-[22px] shrink-0 appearance-none rounded-[2px] border border-base-content/25 bg-base-100 checked:border-4 checked:border-base-100 checked:bg-test-toolbar checked:outline checked:outline-1 checked:outline-base-content/25"
                   value={choice.choiceNumber}
                   checked={isSelected}
                   onChange={() => onChange(String(choice.choiceNumber))}
                   disabled={submitted}
                 />
-                <span className="ml-2">{index + 1}.</span>
-                <span className="label-text" dangerouslySetInnerHTML={{ __html: choice.choice }} />
+                <span className="label-text ml-1" dangerouslySetInnerHTML={{ __html: choice.choice }} />
               </label>
             )
           })}

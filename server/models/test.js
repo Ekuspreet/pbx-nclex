@@ -19,6 +19,7 @@ const tests = pgTable(
         currentPosition: integer('current_position').default(0).notNull(),
         elapsedMs: integer('elapsed_ms').default(0).notNull(),
         remainingMs: integer('remaining_ms'),
+        expiresAt: timestamp('expires_at', { withTimezone: true }),
         scoreSummary: jsonb('score_summary').default({}).notNull(),
         submittedAt: timestamp('submitted_at', { withTimezone: true }),
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

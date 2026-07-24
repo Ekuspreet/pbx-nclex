@@ -8,7 +8,7 @@ export const pricing = {
     {
       key: 'free',
       name: 'Free',
-      price: '$0',
+      price: '₹0',
       cadence: 'Starter access',
       description: 'A limited plan for trying the PBX Nursing workspace.',
       badge: 'Starter',
@@ -27,10 +27,10 @@ export const pricing = {
     },
     {
       key: 'plus',
-      name: 'Plus',
-      price: 'Plus',
-      cadence: 'Paid subscription',
-      description: 'A flexible plan for learners who want a larger practice workflow.',
+      name: 'PBX Nursing Plus',
+      price: '₹899',
+      cadence: '60 days of access',
+      description: '60 days of digital NCLEX-RN preparation with unlimited test creation, performance analytics, results review, highlights, and test notebooks.',
       badge: 'Recommended',
       featured: true,
       features: [
@@ -47,5 +47,5 @@ export const pricing = {
       },
     },
   ],
-  note: 'Free limits keep practice focused. Plus is built for ongoing preparation with room to grow.',
+  note: 'PBX Nursing Plus costs ₹899 for 60 days of digital educational access.',
 }

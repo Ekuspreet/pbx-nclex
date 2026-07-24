@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
+import { Link } from 'react-router-dom'
 import { heroIntro } from '../../motion/landingPresets.js'
 import { getButtonClass } from './buttonClass.js'
+
+const MotionLink = motion.create(Link)
 
 function LandingHero({ hero }) {
   const videoRef = useRef(null)
@@ -84,24 +87,24 @@ function LandingHero({ hero }) {
               ))}
             </dl>
             <div className="flex flex-wrap items-center gap-3">
-              <motion.a
+              <MotionLink
                 className={`${getButtonClass(hero.primaryCta.variant)} motion-safe:transition motion-safe:hover:-translate-y-0.5`}
-                href={hero.primaryCta.href}
+                to={hero.primaryCta.href}
                 aria-label={hero.primaryCta.ariaLabel}
                 whileHover={shouldReduceMotion ? undefined : { y: -2 }}
                 whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
               >
                 {hero.primaryCta.label}
-              </motion.a>
-              <motion.a
-                className={`${getButtonClass(hero.secondaryCta.variant)} motion-safe:transition motion-safe:hover:-translate-y-0.5`}
-                href={hero.secondaryCta.href}
+              </MotionLink>
+              <MotionLink
+                className={`${getButtonClass(hero.secondaryCta.variant)} btn-outline motion-safe:transition motion-safe:hover:-translate-y-0.5`}
+                to={hero.secondaryCta.href}
                 aria-label={hero.secondaryCta.ariaLabel}
                 whileHover={shouldReduceMotion ? undefined : { y: -2 }}
                 whileTap={shouldReduceMotion ? undefined : { scale: 0.98 }}
               >
                 {hero.secondaryCta.label}
-              </motion.a>
+              </MotionLink>
             </div>
 
           </motion.div>

@@ -1,6 +1,9 @@
 import { motion } from 'motion/react'
+import { Link } from 'react-router-dom'
 import { sectionIntro, softHover } from '../../motion/landingPresets.js'
 import { getButtonClass } from './buttonClass.js'
+
+const MotionLink = motion.create(Link)
 
 function JoinCallToAction({ callToAction }) {
   return (
@@ -14,23 +17,23 @@ function JoinCallToAction({ callToAction }) {
               {callToAction.subheading}
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <motion.a
+              <MotionLink
                 className={getButtonClass(callToAction.signup.variant)}
-                href={callToAction.signup.href}
+                to={callToAction.signup.href}
                 aria-label={callToAction.signup.ariaLabel}
                 {...softHover}
               >
                 {callToAction.signup.label}
-              </motion.a>
-              <motion.a
+              </MotionLink>
+              <MotionLink
                 className={getButtonClass(callToAction.login.variant)}
-                href={callToAction.login.href}
+                to={callToAction.login.href}
                 aria-label={callToAction.login.ariaLabel}
                 id={callToAction.loginAnchorId}
                 {...softHover}
               >
                 {callToAction.login.label}
-              </motion.a>
+              </MotionLink>
             </div>
           </div>
         </motion.div>

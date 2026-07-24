@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import {
   createHighlight,
+  createNote,
   getTest,
   listHighlights,
   saveTestAnswer,
@@ -36,9 +37,10 @@ function TestPage() {
   const [timeMs, setTimeMs] = useState(0)
   const [highlights, setHighlights] = useState([])
   const lastSavedTimer = useRef(0)
+  const expirationSubmitted = useRef(false)
 
   const currentQuestion = state.questions[current]
-  const explanationOpen = Boolean(currentQuestion?.checkedAt && state.test?.showRationales)
+  const explanationOpen = Boolean(currentQuestion?.checkedAt && state.test?.tutorMode)
   useEffect(() => {
     let active = true
 
@@ -87,10 +89,21 @@ function TestPage() {
 
   useEffect(() => {
     if (!state.test || state.test.status === 'completed') return
+    if (state.test.timed) return
     if (Math.abs(timeMs - lastSavedTimer.current) < 15000) return
     lastSavedTimer.current = timeMs
-    updateTestTimer(testId, state.test.timed ? { remainingMs: timeMs } : { elapsedMs: timeMs }).catch(() => {})
+    updateTestTimer(testId, { elapsedMs: timeMs }).catch(() => {})
   }, [state.test, testId, timeMs])
+
+  useEffect(() => {
+    if (!state.test?.timed || state.test.status === 'completed' || timeMs > 0) return
+    if (expirationSubmitted.current) return
+
+    expirationSubmitted.current = true
+    submitTest(testId)
+      .then((payload) => navigate(`/tests/${payload.test.id}/result`, { replace: true }))
+      .catch((error) => setState((currentState) => ({ ...currentState, error: error.message })))
+  }, [navigate, state.test, testId, timeMs])
 
   const updateLocalQuestion = (questionId, patch) => {
     setState((currentState) => ({
@@ -150,16 +163,28 @@ function TestPage() {
     })
   }
 
-  const addHighlight = async (exact) => {
+  const addHighlight = async (exact, region = 'question') => {
     if (!exact || !currentQuestion) return
     await createHighlight({
       testId,
       questionId: currentQuestion.questionId,
-      selector: { exact },
+      selector: { exact, region },
       color: 'yellow',
     })
     const payload = await listHighlights({ testId, questionId: currentQuestion.questionId })
     setHighlights(payload.highlights || [])
+  }
+
+  const addNotebookNote = async (content) => {
+    if (!content || !currentQuestion) return
+    await createNote({
+      testId,
+      questionId: currentQuestion.questionId,
+      title: `QID ${currentQuestion.question.questionId}`,
+      content,
+    })
+    window.getSelection()?.removeAllRanges()
+    setModal('notes')
   }
 
   const endTest = async () => {
@@ -202,6 +227,7 @@ function TestPage() {
     ...currentQuestion.question,
     questionText: applyHighlightsToHtml(currentQuestion.question.questionText, highlights),
   }
+  const highlightedExplanation = applyHighlightsToHtml(currentQuestion.question.explanationText, highlights, 'explanation')
 
   return (
     <TestShell
@@ -266,7 +292,8 @@ function TestPage() {
         question={highlightedQuestion}
         submitLabel={state.test.tutorMode ? 'Check' : 'Save'}
         textSizeClass={QUESTION_TEXT_SIZES[textSize]}
-        onHighlight={addHighlight}
+        onHighlight={(exact) => addHighlight(exact, 'question')}
+        onNotebook={addNotebookNote}
         onAnswerChange={(value) => setAnswers((currentAnswers) => ({
           ...currentAnswers,
           [currentQuestion.questionId]: { value, submitted: false },
@@ -275,7 +302,9 @@ function TestPage() {
       />
       {explanationOpen ? (
         <TestExplanation
-          html={currentQuestion.question.explanationText}
+          html={highlightedExplanation}
+          onHighlight={(exact) => addHighlight(exact, 'explanation')}
+          onNotebook={addNotebookNote}
           textSizeClass={QUESTION_TEXT_SIZES[textSize]}
         />
       ) : null}

@@ -34,18 +34,48 @@ function createNotFoundError(resource = 'Resource') {
     return createHttpError(404, `${resource} not found.`);
 }
 
-async function getUserTest(userId, testId, database = db) {
-    const [test] = await database
+function getRemainingMs(test, now = new Date()) {
+    if (!test.timed || !test.expiresAt) {
+        return test.remainingMs;
+    }
+
+    return Math.max(0, new Date(test.expiresAt).getTime() - now.getTime());
+}
+
+function isTimedTestExpired(test, now = new Date()) {
+    return test.timed
+        && test.status === 'in_progress'
+        && getRemainingMs(test, now) <= 0;
+}
+
+function withAuthoritativeTiming(test, now = new Date()) {
+    return {
+        ...test,
+        remainingMs: getRemainingMs(test, now),
+    };
+}
+
+function createTestClosedError(message = 'This test is no longer accepting changes.') {
+    return createHttpError(409, message);
+}
+
+async function getUserTest(userId, testId, database = db, lock = false) {
+    let query = database
         .select()
         .from(tests)
-        .where(and(eq(tests.id, testId), eq(tests.userId, userId)))
-        .limit(1);
+        .where(and(eq(tests.id, testId), eq(tests.userId, userId)));
+
+    if (lock) {
+        query = query.for('update');
+    }
+
+    const [test] = await query.limit(1);
 
     return test || null;
 }
 
-async function requireUserTest(userId, testId, database = db) {
-    const test = await getUserTest(userId, testId, database);
+async function requireUserTest(userId, testId, database = db, lock = false) {
+    const test = await getUserTest(userId, testId, database, lock);
 
     if (!test) {
         throw createNotFoundError('Test');
@@ -68,6 +98,7 @@ async function createTest(userId, config) {
     const selectedQuestions = shuffle(matchingQuestions).slice(0, config.questionCount);
     const now = new Date();
     const remainingMs = config.timed ? config.questionCount * MS_PER_TIMED_QUESTION : null;
+    const expiresAt = config.timed ? new Date(now.getTime() + remainingMs) : null;
 
     return db.transaction(async (tx) => {
         const [createdTest] = await tx
@@ -76,7 +107,7 @@ async function createTest(userId, config) {
                 userId,
                 tutorMode: config.tutorMode,
                 timed: config.timed,
-                showRationales: config.showRationales,
+                showRationales: config.tutorMode,
                 questionCount: config.questionCount,
                 subjects: config.subjects,
                 systems: config.systems,
@@ -84,6 +115,7 @@ async function createTest(userId, config) {
                 currentPosition: 0,
                 elapsedMs: 0,
                 remainingMs,
+                expiresAt,
                 scoreSummary: {},
                 createdAt: now,
                 updatedAt: now,
@@ -145,12 +177,18 @@ function combineQuestionState(testQuestion, question) {
 }
 
 async function getTestPayload(userId, testId, database = db) {
-    const test = await requireUserTest(userId, testId, database);
+    let test = await requireUserTest(userId, testId, database);
+
+    if (database === db && isTimedTestExpired(test)) {
+        await submitTest(userId, testId);
+        test = await requireUserTest(userId, testId, database);
+    }
+
     const { testQuestionsRows, questionRows } = await getTestRows(test.id, database);
     const questionMap = new Map(questionRows.map((question) => [question.id, question]));
 
     return {
-        test,
+        test: withAuthoritativeTiming(test),
         questions: testQuestionsRows.map((testQuestion) => (
             combineQuestionState(testQuestion, questionMap.get(testQuestion.questionId))
         )),
@@ -177,8 +215,18 @@ async function updateCurrentPosition(database, test, position, now) {
 async function saveAnswer(userId, testId, payload) {
     const now = new Date();
 
-    return db.transaction(async (tx) => {
-        const test = await requireUserTest(userId, testId, tx);
+    const result = await db.transaction(async (tx) => {
+        const test = await requireUserTest(userId, testId, tx, true);
+
+        if (test.status !== 'in_progress') {
+            throw createTestClosedError();
+        }
+
+        if (isTimedTestExpired(test, now)) {
+            await finalizeTest(tx, test, now);
+            return { expired: true };
+        }
+
         const [testQuestion] = await tx
             .select()
             .from(testQuestions)
@@ -216,18 +264,34 @@ async function saveAnswer(userId, testId, payload) {
         const updatedTest = await updateCurrentPosition(tx, test, payload.position, now);
 
         return {
-            test: updatedTest,
+            test: withAuthoritativeTiming(updatedTest, now),
             question: combineQuestionState(updatedQuestion, question),
             correctAnswer: shouldCheck ? getCorrectAnswer(question) : null,
         };
     });
+
+    if (result.expired) {
+        throw createTestClosedError('Time expired. The test was submitted automatically.');
+    }
+
+    return result;
 }
 
 async function updateQuestionStatus(userId, testId, payload) {
     const now = new Date();
 
-    return db.transaction(async (tx) => {
-        const test = await requireUserTest(userId, testId, tx);
+    const result = await db.transaction(async (tx) => {
+        const test = await requireUserTest(userId, testId, tx, true);
+
+        if (test.status !== 'in_progress') {
+            throw createTestClosedError();
+        }
+
+        if (isTimedTestExpired(test, now)) {
+            await finalizeTest(tx, test, now);
+            return { expired: true };
+        }
+
         let updatedQuestion = null;
 
         if (payload.questionId) {
@@ -254,32 +318,53 @@ async function updateQuestionStatus(userId, testId, payload) {
         const updatedTest = await updateCurrentPosition(tx, test, payload.currentPosition, now);
 
         return {
-            test: updatedTest,
+            test: withAuthoritativeTiming(updatedTest, now),
             question: updatedQuestion,
         };
     });
+
+    if (result.expired) {
+        throw createTestClosedError('Time expired. The test was submitted automatically.');
+    }
+
+    return result;
 }
 
 async function updateTimer(userId, testId, payload) {
     const now = new Date();
-    const test = await requireUserTest(userId, testId);
-    const set = { updatedAt: now };
+    const result = await db.transaction(async (tx) => {
+        const test = await requireUserTest(userId, testId, tx, true);
 
-    if (typeof payload.elapsedMs === 'number') {
-        set.elapsedMs = payload.elapsedMs;
+        if (test.status !== 'in_progress') {
+            throw createTestClosedError();
+        }
+
+        if (isTimedTestExpired(test, now)) {
+            await finalizeTest(tx, test, now);
+            return { expired: true };
+        }
+
+        if (test.timed) {
+            return { test: withAuthoritativeTiming(test, now) };
+        }
+
+        const [updatedTest] = await tx
+            .update(tests)
+            .set({
+                elapsedMs: payload.elapsedMs ?? test.elapsedMs,
+                updatedAt: now,
+            })
+            .where(eq(tests.id, test.id))
+            .returning();
+
+        return { test: updatedTest };
+    });
+
+    if (result.expired) {
+        throw createTestClosedError('Time expired. The test was submitted automatically.');
     }
 
-    if (payload.remainingMs !== undefined) {
-        set.remainingMs = payload.remainingMs;
-    }
-
-    const [updatedTest] = await db
-        .update(tests)
-        .set(set)
-        .where(eq(tests.id, test.id))
-        .returning();
-
-    return updatedTest;
+    return result.test;
 }
 
 function createBreakdown(questionRows, testQuestionRows, dimension) {
@@ -338,6 +423,46 @@ function buildScoreSummary(questionRows, testQuestionRows) {
     };
 }
 
+async function finalizeTest(database, test, now = new Date()) {
+    const { testQuestionsRows, questionRows } = await getTestRows(test.id, database);
+    const questionMap = new Map(questionRows.map((question) => [question.id, question]));
+    const gradedRows = [];
+
+    for (const row of testQuestionsRows) {
+        const question = questionMap.get(row.questionId);
+        const isCorrect = row.answered ? isAnswerCorrect(question, row.answer) : false;
+        const [updatedRow] = await database
+            .update(testQuestions)
+            .set({
+                isCorrect,
+                checkedAt: row.answered ? now : null,
+                updatedAt: now,
+            })
+            .where(eq(testQuestions.id, row.id))
+            .returning();
+
+        gradedRows.push(updatedRow);
+    }
+
+    const scoreSummary = buildScoreSummary(questionRows, gradedRows);
+    const [updatedTest] = await database
+        .update(tests)
+        .set({
+            status: 'completed',
+            remainingMs: test.timed ? 0 : test.remainingMs,
+            scoreSummary,
+            submittedAt: now,
+            updatedAt: now,
+        })
+        .where(and(eq(tests.id, test.id), eq(tests.status, 'in_progress')))
+        .returning();
+
+    return {
+        test: withAuthoritativeTiming(updatedTest || test, now),
+        scoreSummary,
+    };
+}
+
 function getAttemptTimestamp(row) {
     const value = row.checkedAt || row.updatedAt || row.createdAt;
     const time = value ? new Date(value).getTime() : 0;
@@ -345,10 +470,10 @@ function getAttemptTimestamp(row) {
     return Number.isNaN(time) ? 0 : time;
 }
 
-function getLatestAnsweredAttempts(answeredRows) {
+function getLatestQuestionStates(questionStateRows) {
     const attempts = new Map();
 
-    for (const row of answeredRows) {
+    for (const row of questionStateRows) {
         const current = attempts.get(row.questionId);
 
         if (!current || getAttemptTimestamp(row) >= getAttemptTimestamp(current)) {
@@ -371,17 +496,23 @@ function isDashboardAttemptCorrect(row, question) {
     return isAnswerCorrect(question, row.answer);
 }
 
-function buildLatestAttemptStats(latestAttemptRows, questionRows) {
+function buildLatestQuestionStats(latestQuestionRows, questionRows) {
     const questionMap = new Map(questionRows.map((question) => [question.id, question]));
     const byDimension = new Map();
     let correctQuestions = 0;
+    let incorrectQuestions = 0;
+    let omittedQuestions = 0;
 
-    for (const row of latestAttemptRows) {
+    for (const row of latestQuestionRows) {
         const question = questionMap.get(row.questionId);
-        const isCorrect = isDashboardAttemptCorrect(row, question);
+        const isCorrect = row.answered && isDashboardAttemptCorrect(row, question);
 
         if (isCorrect) {
             correctQuestions += 1;
+        } else if (row.answered) {
+            incorrectQuestions += 1;
+        } else {
+            omittedQuestions += 1;
         }
 
         for (const dimension of ['subject', 'system']) {
@@ -395,11 +526,14 @@ function buildLatestAttemptStats(latestAttemptRows, questionRows) {
                 attemptedQuestions: 0,
                 correctQuestions: 0,
                 incorrectQuestions: 0,
+                omittedQuestions: 0,
             };
 
             current.attemptedQuestions += 1;
 
-            if (isCorrect) {
+            if (!row.answered) {
+                current.omittedQuestions += 1;
+            } else if (isCorrect) {
                 current.correctQuestions += 1;
             } else {
                 current.incorrectQuestions += 1;
@@ -410,9 +544,12 @@ function buildLatestAttemptStats(latestAttemptRows, questionRows) {
     }
 
     return {
-        attemptedQuestions: latestAttemptRows.length,
+        usedQuestions: latestQuestionRows.length,
+        attemptedQuestions: latestQuestionRows.length,
         correctQuestions,
-        incorrectQuestions: latestAttemptRows.length - correctQuestions,
+        incorrectQuestions,
+        partiallyIncorrectQuestions: 0,
+        omittedQuestions,
         byDimension,
     };
 }
@@ -421,43 +558,13 @@ async function submitTest(userId, testId) {
     const now = new Date();
 
     return db.transaction(async (tx) => {
-        const test = await requireUserTest(userId, testId, tx);
-        const { testQuestionsRows, questionRows } = await getTestRows(test.id, tx);
-        const questionMap = new Map(questionRows.map((question) => [question.id, question]));
-        const gradedRows = [];
+        const test = await requireUserTest(userId, testId, tx, true);
 
-        for (const row of testQuestionsRows) {
-            const question = questionMap.get(row.questionId);
-            const isCorrect = row.answered ? isAnswerCorrect(question, row.answer) : false;
-            const [updatedRow] = await tx
-                .update(testQuestions)
-                .set({
-                    isCorrect,
-                    checkedAt: row.answered ? now : null,
-                    updatedAt: now,
-                })
-                .where(eq(testQuestions.id, row.id))
-                .returning();
-
-            gradedRows.push(updatedRow);
+        if (test.status !== 'in_progress') {
+            throw createTestClosedError('This test has already been submitted.');
         }
 
-        const scoreSummary = buildScoreSummary(questionRows, gradedRows);
-        const [updatedTest] = await tx
-            .update(tests)
-            .set({
-                status: 'completed',
-                scoreSummary,
-                submittedAt: now,
-                updatedAt: now,
-            })
-            .where(eq(tests.id, test.id))
-            .returning();
-
-        return {
-            test: updatedTest,
-            scoreSummary,
-        };
+        return finalizeTest(tx, test, now);
     });
 }
 
@@ -486,38 +593,51 @@ async function getTestResult(userId, testId) {
 }
 
 async function listUserTests(userId) {
-    return db
+    const fetchTests = () => db
         .select()
         .from(tests)
         .where(eq(tests.userId, userId))
         .orderBy(sql`${tests.updatedAt} desc`);
+    let userTests = await fetchTests();
+    const expiredTests = userTests.filter((test) => isTimedTestExpired(test));
+
+    for (const test of expiredTests) {
+        try {
+            await submitTest(userId, test.id);
+        } catch (error) {
+            if (error.statusCode !== 409) throw error;
+        }
+    }
+
+    if (expiredTests.length > 0) {
+        userTests = await fetchTests();
+    }
+
+    return userTests.map((test) => withAuthoritativeTiming(test));
 }
 
 async function getDashboard(userId) {
     const totalQuestions = await getQuestionTotal();
     const userTests = await listUserTests(userId);
     const testIds = userTests.map((test) => test.id);
-    let answeredRows = [];
+    let questionStateRows = [];
 
     if (testIds.length > 0) {
-        answeredRows = await db
+        questionStateRows = await db
             .select()
             .from(testQuestions)
-            .where(and(
-                inArray(testQuestions.testId, testIds),
-                eq(testQuestions.answered, true)
-            ));
+            .where(inArray(testQuestions.testId, testIds));
     }
 
-    const latestAttemptRows = getLatestAnsweredAttempts(answeredRows);
-    const attemptedQuestionIds = latestAttemptRows.map((row) => row.questionId);
-    let attemptedQuestionRows = [];
+    const latestQuestionRows = getLatestQuestionStates(questionStateRows);
+    const usedQuestionIds = latestQuestionRows.map((row) => row.questionId);
+    let usedQuestionRows = [];
 
-    if (attemptedQuestionIds.length > 0) {
-        attemptedQuestionRows = await db
+    if (usedQuestionIds.length > 0) {
+        usedQuestionRows = await db
             .select()
             .from(questions)
-            .where(inArray(questions.id, attemptedQuestionIds));
+            .where(inArray(questions.id, usedQuestionIds));
     }
 
     let storedStats = await db.select().from(questionStats);
@@ -526,30 +646,36 @@ async function getDashboard(userId) {
         storedStats = buildStatsFromQuestions(await db.select().from(questions));
     }
 
-    const attemptedStats = buildStatsFromQuestions(attemptedQuestionRows);
-    const attemptedMap = new Map(attemptedStats.map((stat) => [`${stat.dimension}:${stat.key}`, stat.totalQuestions]));
-    const latestAttemptStats = buildLatestAttemptStats(latestAttemptRows, attemptedQuestionRows);
+    const usedStats = buildStatsFromQuestions(usedQuestionRows);
+    const usedMap = new Map(usedStats.map((stat) => [`${stat.dimension}:${stat.key}`, stat.totalQuestions]));
+    const latestQuestionStats = buildLatestQuestionStats(latestQuestionRows, usedQuestionRows);
     const toRows = (dimension) => storedStats
         .filter((stat) => stat.dimension === dimension)
         .sort((a, b) => a.label.localeCompare(b.label))
         .map((stat) => {
-            const attemptStat = latestAttemptStats.byDimension.get(`${dimension}:${stat.key}`);
+            const questionStat = latestQuestionStats.byDimension.get(`${dimension}:${stat.key}`);
 
             return {
                 key: stat.key,
                 label: stat.label,
                 totalQuestions: stat.totalQuestions,
-                attemptedQuestions: attemptedMap.get(`${dimension}:${stat.key}`) || 0,
-                correctQuestions: attemptStat?.correctQuestions || 0,
-                incorrectQuestions: attemptStat?.incorrectQuestions || 0,
+                usedQuestions: usedMap.get(`${dimension}:${stat.key}`) || 0,
+                attemptedQuestions: usedMap.get(`${dimension}:${stat.key}`) || 0,
+                correctQuestions: questionStat?.correctQuestions || 0,
+                incorrectQuestions: questionStat?.incorrectQuestions || 0,
+                partiallyIncorrectQuestions: 0,
+                omittedQuestions: questionStat?.omittedQuestions || 0,
             };
         });
 
     return {
         totalQuestions,
-        attemptedQuestions: latestAttemptStats.attemptedQuestions,
-        correctQuestions: latestAttemptStats.correctQuestions,
-        incorrectQuestions: latestAttemptStats.incorrectQuestions,
+        usedQuestions: latestQuestionStats.usedQuestions,
+        attemptedQuestions: latestQuestionStats.usedQuestions,
+        correctQuestions: latestQuestionStats.correctQuestions,
+        incorrectQuestions: latestQuestionStats.incorrectQuestions,
+        partiallyIncorrectQuestions: 0,
+        omittedQuestions: latestQuestionStats.omittedQuestions,
         subjects: toRows('subject'),
         systems: toRows('system'),
         tests: userTests.slice(0, 8),

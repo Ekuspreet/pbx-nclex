@@ -19,7 +19,6 @@ function LandingPage() {
         <CustomerJourneySection />
         <FeatureSection features={features} />
         <PricingSection pricing={pricing} />
-        <JoinCallToAction callToAction={callToAction} />
       </main>
     </AppShell>
   )

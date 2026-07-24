@@ -28,10 +28,11 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function applyHighlightsToHtml(html, highlights = []) {
+export function applyHighlightsToHtml(html, highlights = [], region = 'question') {
   let nextHtml = html || ''
 
   for (const highlight of highlights) {
+    if ((highlight.selector?.region || 'question') !== region) continue
     const exact = highlight.selector?.exact
     if (!exact) continue
 
