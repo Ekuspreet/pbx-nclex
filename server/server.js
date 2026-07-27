@@ -24,7 +24,7 @@ const brokenDownloadPlaceholder = `
 function setPublicAssetHeaders(res) {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 }
-
+app.set("trust proxy", true);
 app.use(helmet());
 app.use(cors({
     origin(origin, callback) {

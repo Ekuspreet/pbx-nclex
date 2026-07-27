@@ -24,6 +24,7 @@ function getMailTransporter() {
     if (!mailTransporter) {
         mailTransporter = nodemailer.createTransport({
             service: 'gmail',
+            family: 4,
             auth: {
                 type: 'OAuth2',
                 user: env.GOOGLE_MAIL_USER,
