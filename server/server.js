@@ -10,6 +10,7 @@ const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+app.set("trust proxy", 1);
 const allowedOrigins = [env.CLIENT_URL].filter(Boolean);
 const publicPath = path.join(__dirname, 'public');
 const brokenDownloadPlaceholder = `
@@ -24,7 +25,6 @@ const brokenDownloadPlaceholder = `
 function setPublicAssetHeaders(res) {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 }
-app.set("trust proxy", true);
 app.use(helmet());
 app.use(cors({
     origin(origin, callback) {
