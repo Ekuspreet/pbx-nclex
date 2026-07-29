@@ -12,10 +12,8 @@ function AboutPage() {
           <h2 className="mt-9 text-2xl font-bold">Our service</h2>
           <p className="mt-3 leading-7 text-base-content/75">PBX Nursing Plus provides 60 days of access to unlimited test creation, the available NCLEX-RN question bank, results review, performance analytics, highlights, and notebooks for <strong>₹899</strong>.</p>
           <section className="mt-9 rounded-xl border border-base-300 bg-base-200 p-5">
-            <h2 className="font-bold">Registered business information</h2>
+            <h2 className="font-bold">Contact information</h2>
             <p className="mt-2"><strong>Trade name:</strong> {business.tradeName}</p>
-            <p className="mt-2"><strong>Full legal name:</strong> {business.legalName}</p>
-            <p className="mt-2"><strong>Registered address:</strong> {business.registeredAddress}</p>
             <p className="mt-2"><strong>Customer support:</strong> {business.supportEmail}</p>
           </section>
         </article>

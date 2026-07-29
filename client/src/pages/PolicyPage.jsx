@@ -53,9 +53,7 @@ function PolicyPage({ operatorNotice = false, source }) {
           {operatorNotice ? <div className="alert alert-info mb-7"><span>This website is operated by <strong>{business.tradeName}</strong>.</span></div> : null}
           <MarkdownContent source={source} />
           <section className="mt-10 rounded-xl border border-base-300 bg-base-200 p-5">
-            <h2 className="font-bold">Business and contact information</h2>
-            <p className="mt-2"><strong>Legal name:</strong> {business.legalName}</p>
-            <p className="mt-2"><strong>Registered address:</strong> {business.registeredAddress}</p>
+            <h2 className="font-bold">Contact information</h2>
             <p className="mt-2"><strong>Support:</strong> {business.supportEmail}</p>
           </section>
         </article>

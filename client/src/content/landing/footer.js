@@ -1,5 +1,4 @@
 import { brand } from './navigation.js'
-import { business } from '../business.js'
 
 export const footer = {
   brand,
@@ -16,7 +15,5 @@ export const footer = {
     },
     { title: 'Company', links: [{ label: 'About Us', href: '/about-us' }] },
   ],
-  legalName: business.legalName,
-  registeredAddress: business.registeredAddress,
   copyright: 'Copyright 2026 PBX Nursing. All rights reserved.',
 }

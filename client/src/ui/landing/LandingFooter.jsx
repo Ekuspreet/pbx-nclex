@@ -28,11 +28,6 @@ function LandingFooter({ footer }) {
           ))}
         </div>
 
-        <div className="mt-8 max-w-3xl text-caption text-inverse-muted">
-          <p><strong>Legal name:</strong> {footer.legalName}</p>
-          <p className="mt-1"><strong>Registered address:</strong> {footer.registeredAddress}</p>
-        </div>
-
         <div className="mt-8 w-full border-t border-neutral-content/15 pt-5">
           <p className="text-caption text-inverse-muted">
             {footer.copyright}
