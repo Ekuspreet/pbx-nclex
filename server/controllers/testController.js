@@ -11,7 +11,7 @@ const {
 
 async function create(req, res, next) {
     try {
-        const payload = await createTest(req.user.id, req.body);
+        const payload = await createTest(req.user.id, req.body, req.user.plan);
         res.status(201).json(payload);
     } catch (error) {
         next(error);

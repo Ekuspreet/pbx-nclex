@@ -170,8 +170,8 @@ async function dashboard(req, res, next) {
     try {
         const [userCount] = await db.select({ count: sql`count(*)::int` }).from(users);
         const [questionCount] = await db.select({ count: sql`count(*)::int` }).from(questions);
-        const openFeedback = await db
-            .select()
+        const [openFeedback] = await db
+            .select({ count: sql`count(*)::int` })
             .from(feedbackThreads)
             .where(eq(feedbackThreads.status, 'open'));
 
@@ -179,7 +179,7 @@ async function dashboard(req, res, next) {
             users: userCount?.count || 0,
             questions: questionCount?.count || 0,
             totalUsers: userCount?.count || 0,
-            openFeedback: openFeedback.length,
+            openFeedback: openFeedback?.count || 0,
         });
     } catch (error) {
         next(error);

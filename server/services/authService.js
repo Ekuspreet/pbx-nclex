@@ -427,8 +427,8 @@ async function loginWithGoogle({ credential, userAgent, ipAddress }) {
     }
 }
 
-function buildPasswordResetUrl(token) {
-    const resetUrl = new URL('/reset-password', env.CLIENT_URL);
+function buildPasswordResetUrl(token, requestOrigin) {
+    const resetUrl = new URL('/reset-password', requestOrigin);
     resetUrl.searchParams.set('token', token);
 
     return resetUrl.toString();
@@ -458,7 +458,7 @@ async function createPasswordResetRecord(database, { userId, tokenHash, expiresA
     return resetRecord;
 }
 
-async function requestPasswordReset({ email }) {
+async function requestPasswordReset({ email, requestOrigin }) {
     const normalizedEmail = normalizeEmail(email);
     const [user] = await db
         .select()
@@ -466,7 +466,7 @@ async function requestPasswordReset({ email }) {
         .where(eq(users.normalizedEmail, normalizedEmail))
         .limit(1);
 
-    if (!user || user.status !== 'active' || !user.emailVerified) {
+    if (!user || user.status !== 'active' || !user.emailVerified || !user.passwordHash) {
         return {
             sent: false,
         };
@@ -488,7 +488,7 @@ async function requestPasswordReset({ email }) {
         await sendPasswordResetEmail({
             to: user.email,
             name: user.name,
-            resetUrl: buildPasswordResetUrl(token),
+            resetUrl: buildPasswordResetUrl(token, requestOrigin),
         });
     } catch (error) {
         console.error('Password reset email delivery failed.');
@@ -568,13 +568,63 @@ async function resetPassword({ token, password }) {
     });
 }
 
+async function updateUserProfile(userId, { name, phone }) {
+    const [user] = await db
+        .update(users)
+        .set({ name: name.trim(), phone, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning();
+
+    if (!user || user.status !== 'active') {
+        throw createAuthError(404, 'User account not found.', 'AUTH_USER_NOT_FOUND');
+    }
+
+    return { user: toPublicUser(user) };
+}
+
+async function setInitialPassword(userId, { password }) {
+    const passwordHash = await hashPassword(password);
+    const now = new Date();
+
+    return db.transaction(async (tx) => {
+        const [user] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1)
+            .for('update');
+
+        if (!user || user.status !== 'active') {
+            throw createAuthError(404, 'User account not found.', 'AUTH_USER_NOT_FOUND');
+        }
+
+        if (!user.googleSubject) {
+            throw createAuthError(403, 'A password can only be added to a Google account.', 'AUTH_PASSWORD_SETUP_NOT_ALLOWED');
+        }
+
+        if (user.passwordHash) {
+            throw createAuthError(409, 'A password has already been set.', 'AUTH_PASSWORD_ALREADY_SET');
+        }
+
+        const [updatedUser] = await tx
+            .update(users)
+            .set({ passwordHash, updatedAt: now })
+            .where(eq(users.id, user.id))
+            .returning();
+
+        return { user: toPublicUser(updatedUser) };
+    });
+}
+
 module.exports = {
     loginWithGoogle,
     loginWithEmailPassword,
     requestPasswordReset,
     resetPassword,
     resendSignupOtp,
+    setInitialPassword,
     signupWithEmailPassword,
     toPublicUser,
+    updateUserProfile,
     verifySignupEmail,
 };

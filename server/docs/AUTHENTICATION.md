@@ -18,7 +18,7 @@ The server uses Express, PostgreSQL, Drizzle ORM, and secure `httpOnly` cookies.
 ## Environment
 
 Create `server/.env` from `server/.env.example` and `client/.env` from `client/.env.example`.
-The learner UI and admin UI are served by the same client app origin; admin lives under `/admin/...`, so `CLIENT_URL` is the only browser origin the server needs to trust.
+The learner UI and admin UI are served from the single origin configured in `CLIENT_URL`. Admin lives under `/admin/...` within the client app.
 
 Generate different token secrets with:
 
@@ -182,7 +182,7 @@ npm run dev
 - Set `COOKIE_SECURE=true` behind HTTPS.
 - Use `COOKIE_SAME_SITE=lax` for same-site deployments.
 - Use `COOKIE_SAME_SITE=none` only for cross-site deployments and only with secure cookies.
-- Restrict `CLIENT_URL` to known origins.
+- Set `CLIENT_URL` to the single canonical client origin.
 - Keep `credentials: true` in CORS only for trusted origins.
 - Do not log passwords, OTPs, reset tokens, refresh tokens, or JWTs in production.
 - Add an external cleanup job for expired email verifications, expired password resets, and old revoked refresh sessions.

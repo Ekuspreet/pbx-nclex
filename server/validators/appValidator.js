@@ -19,9 +19,10 @@ const questionIdParamSchema = z.object({
 const createTestSchema = z.object({
     tutorMode: z.boolean().default(false),
     timed: z.boolean().default(false),
+    questionMode: z.enum(['unused', 'incorrect', 'marked', 'omitted', 'correct']).default('unused'),
     subjects: z.array(z.string().trim().min(1)).default([]),
     systems: z.array(z.string().trim().min(1)).default([]),
-    questionCount: z.number().int().min(1).max(80),
+    questionCount: z.number().int().min(1).max(85),
 });
 
 const answerSchema = z.union([
@@ -67,9 +68,9 @@ const updateNoteSchema = z.object({
 
 const highlightSelectorSchema = z.object({
     region: z.string().trim().max(120).optional(),
-    exact: z.string().trim().min(1).max(5000),
-    prefix: z.string().trim().max(500).optional(),
-    suffix: z.string().trim().max(500).optional(),
+    exact: z.string().min(1).max(5000).refine((value) => value.trim().length > 0, 'Highlight text is required.'),
+    prefix: z.string().max(500).optional(),
+    suffix: z.string().max(500).optional(),
     start: z.number().int().min(0).optional(),
     end: z.number().int().min(0).optional(),
 });
@@ -120,7 +121,7 @@ const adminLoginSchema = z.object({
 const paginationQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(200).default(50),
     offset: z.coerce.number().int().min(0).default(0),
-    status: z.string().trim().optional(),
+    status: z.enum(['open', 'reviewing', 'resolved', 'closed']).optional(),
     q: z.string().trim().optional(),
 });
 

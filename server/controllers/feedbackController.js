@@ -44,7 +44,7 @@ async function reply(req, res, next) {
 
 async function close(req, res, next) {
     try {
-        const thread = await updateFeedbackStatus(req.params.feedbackId, 'closed');
+        const thread = await updateFeedbackStatus(req.params.feedbackId, 'closed', req.user.id);
         res.status(200).json({ thread });
     } catch (error) {
         next(error);

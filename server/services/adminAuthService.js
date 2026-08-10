@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const { env } = require('../env');
@@ -31,6 +32,12 @@ function createAdminToken() {
     );
 }
 
+function secretMatches(received, expected) {
+    const left = crypto.createHash('sha256').update(String(received)).digest();
+    const right = crypto.createHash('sha256').update(String(expected)).digest();
+    return crypto.timingSafeEqual(left, right);
+}
+
 function verifyAdminToken(token) {
     const payload = jwt.verify(token, getAdminSecret(), {
         algorithms: ['HS256'],
@@ -46,7 +53,7 @@ function verifyAdminToken(token) {
 function loginAdmin({ username, password }) {
     assertAdminPasswordConfigured();
 
-    if (username !== env.ADMIN_USERNAME || password !== env.ADMIN_PASSWORD) {
+    if (!secretMatches(username, env.ADMIN_USERNAME) || !secretMatches(password, env.ADMIN_PASSWORD)) {
         throw createHttpError(401, 'Invalid admin credentials.');
     }
 

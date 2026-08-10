@@ -5,6 +5,8 @@ const {
     feedbackMessages,
     feedbackThreads,
     questions,
+    testQuestions,
+    tests,
     users,
 } = require('../db');
 const { createHttpError } = require('./httpError');
@@ -59,18 +61,48 @@ async function listFeedbackForUser(userId) {
 }
 
 async function listAllFeedback(filters = {}) {
-    const rows = await db
+    let query = db
         .select()
-        .from(feedbackThreads)
+        .from(feedbackThreads);
+
+    if (filters.status) {
+        query = query.where(eq(feedbackThreads.status, filters.status));
+    }
+
+    const rows = await query
         .orderBy(desc(feedbackThreads.updatedAt))
         .limit(filters.limit || 50)
         .offset(filters.offset || 0);
 
-    const filteredRows = filters.status
-        ? rows.filter((row) => row.status === filters.status)
-        : rows;
+    return Promise.all(rows.map(attachFeedbackContext));
+}
 
-    return Promise.all(filteredRows.map(attachFeedbackContext));
+async function assertFeedbackContextBelongsToUser(database, userId, payload) {
+    if (payload.testId) {
+        const [test] = await database.select({ id: tests.id }).from(tests).where(and(
+            eq(tests.id, payload.testId),
+            eq(tests.userId, userId)
+        )).limit(1);
+
+        if (!test) throw createNotFoundError('Test');
+    }
+
+    if (payload.questionId) {
+        const conditions = [eq(questions.id, payload.questionId)];
+
+        if (payload.testId) {
+            const [testQuestion] = await database.select({ id: testQuestions.id }).from(testQuestions).where(and(
+                eq(testQuestions.testId, payload.testId),
+                eq(testQuestions.questionId, payload.questionId)
+            )).limit(1);
+
+            if (!testQuestion) throw createNotFoundError('Question');
+            return;
+        }
+
+        const [question] = await database.select({ id: questions.id }).from(questions).where(and(...conditions)).limit(1);
+        if (!question) throw createNotFoundError('Question');
+    }
 }
 
 async function getFeedbackThread(threadId, userId = null) {
@@ -106,6 +138,8 @@ async function createFeedbackThread(userId, payload) {
     const now = new Date();
 
     const threadId = await db.transaction(async (tx) => {
+        await assertFeedbackContextBelongsToUser(tx, userId, payload);
+
         const [thread] = await tx
             .insert(feedbackThreads)
             .values({
@@ -175,15 +209,21 @@ async function addFeedbackReply(threadId, senderType, message, userId = null) {
     return getFeedbackThread(threadId, userId);
 }
 
-async function updateFeedbackStatus(threadId, status) {
+async function updateFeedbackStatus(threadId, status, userId = null) {
     const now = new Date();
+    const conditions = [eq(feedbackThreads.id, threadId)];
+
+    if (userId) {
+        conditions.push(eq(feedbackThreads.userId, userId));
+    }
+
     const [thread] = await db
         .update(feedbackThreads)
         .set({
             status,
             updatedAt: now,
         })
-        .where(eq(feedbackThreads.id, threadId))
+        .where(and(...conditions))
         .returning();
 
     if (!thread) {

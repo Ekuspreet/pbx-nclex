@@ -7,10 +7,13 @@
         "start": "node index.js",
         "dev": "nodemon index.js",
         "questions:import": "node scripts/importQuestions.js",
+        "user:mock-paid": "node scripts/createMockPaidUser.js",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:push": "drizzle-kit push",
-        "db:studio": "drizzle-kit studio"
+        "db:studio": "drizzle-kit studio",
+        "db:reset:schema": "node scripts/resetDatabase.js",
+        "db:reset": "npm run db:reset:schema && npm run db:migrate"
     },
     "dependencies": {
         "argon2": "^0.44.0",
@@ -25,6 +28,7 @@
         "jsonwebtoken": "^9.0.3",
         "nodemailer": "^9.0.3",
         "pg": "^8.22.0",
+        "razorpay": "^2.9.8",
         "zod": "^4.4.3"
     },
     "devDependencies": {

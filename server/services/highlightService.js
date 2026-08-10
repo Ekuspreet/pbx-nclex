@@ -1,8 +1,9 @@
-const { and, desc, eq, isNull } = require('drizzle-orm');
+const { and, desc, eq, isNull, sql } = require('drizzle-orm');
 
 const { db, highlights, questions, tests } = require('../db');
 const { createHttpError } = require('./httpError');
 const { toClientQuestion } = require('./questionBankService');
+const { getPlan } = require('./planCatalog');
 
 function createNotFoundError(resource = 'Resource') {
     return createHttpError(404, `${resource} not found.`);
@@ -71,8 +72,13 @@ async function listHighlights(userId, filters = {}) {
     return attachQuestionContext(rows);
 }
 
-async function createHighlight(userId, payload) {
+async function createHighlight(userId, payload, planName = 'free') {
     await assertTestBelongsToUser(userId, payload.testId);
+    const limit = getPlan(planName).limits.highlights;
+    if (limit !== null) {
+        const [row] = await db.select({ count: sql`count(*)::int` }).from(highlights).where(eq(highlights.userId, userId));
+        if ((row?.count || 0) >= limit) throw createHttpError(403, `The Free plan allows ${limit} highlights. Upgrade to Plus for unlimited highlights.`);
+    }
 
     const now = new Date();
     const [highlight] = await db
@@ -124,12 +130,22 @@ async function deleteHighlight(userId, highlightId) {
     return highlight;
 }
 
-async function replaceQuestionHighlights(userId, payload) {
+async function replaceQuestionHighlights(userId, payload, planName = 'free') {
     await assertTestBelongsToUser(userId, payload.testId);
 
     const now = new Date();
 
     return db.transaction(async (tx) => {
+        const limit = getPlan(planName).limits.highlights;
+        if (limit !== null) {
+            const [row] = await tx.select({ count: sql`count(*)::int` }).from(highlights).where(eq(highlights.userId, userId));
+            const [replaced] = await tx.select({ count: sql`count(*)::int` }).from(highlights).where(and(
+                eq(highlights.userId, userId), createTestCondition(highlights.testId, payload.testId), eq(highlights.questionId, payload.questionId)
+            ));
+            if ((row?.count || 0) - (replaced?.count || 0) + payload.highlights.length > limit) {
+                throw createHttpError(403, `The Free plan allows ${limit} highlights. Upgrade to Plus for unlimited highlights.`);
+            }
+        }
         await tx
             .delete(highlights)
             .where(and(

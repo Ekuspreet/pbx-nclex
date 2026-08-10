@@ -9,11 +9,14 @@ const highlightRoutes = require('./highlightRoutes');
 const noteRoutes = require('./noteRoutes');
 const questionRoutes = require('./questionRoutes');
 const testRoutes = require('./testRoutes');
+const paymentRoutes = require('./paymentRoutes');
 const authenticate = require('../middleware/authenticate');
+const planController = require('../controllers/planController');
 
 const router = express.Router();
 
 router.get('/health', healthController);
+router.get('/plans', planController.index);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.get('/dashboard', authenticate, dashboardController);
@@ -22,5 +25,6 @@ router.use('/tests', authenticate, testRoutes);
 router.use('/notes', authenticate, noteRoutes);
 router.use('/highlights', authenticate, highlightRoutes);
 router.use('/feedback', authenticate, feedbackRoutes);
+router.use('/payments', authenticate, paymentRoutes);
 
 module.exports = router;

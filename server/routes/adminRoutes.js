@@ -2,6 +2,7 @@ const express = require('express');
 
 const adminController = require('../controllers/adminController');
 const authenticateAdmin = require('../middleware/authenticateAdmin');
+const { adminLoginLimiter } = require('../middleware/rateLimits');
 const validate = require('../middleware/validate');
 const {
     adminLoginSchema,
@@ -13,7 +14,7 @@ const {
 
 const router = express.Router();
 
-router.post('/auth/login', validate({ body: adminLoginSchema }), adminController.login);
+router.post('/auth/login', adminLoginLimiter, validate({ body: adminLoginSchema }), adminController.login);
 router.post('/auth/logout', adminController.logout);
 router.get('/me', authenticateAdmin, adminController.me);
 router.get('/dashboard', authenticateAdmin, adminController.dashboard);

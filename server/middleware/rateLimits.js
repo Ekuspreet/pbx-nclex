@@ -24,6 +24,12 @@ const loginLimiter = createAuthRateLimit({
     message: 'Too many login attempts. Please try again later.',
 });
 
+const adminLoginLimiter = createAuthRateLimit({
+    windowMinutes: 15,
+    max: 5,
+    message: 'Too many admin login attempts. Please try again later.',
+});
+
 const otpVerifyLimiter = createAuthRateLimit({
     windowMinutes: 15,
     max: 10,
@@ -48,11 +54,26 @@ const refreshLimiter = createAuthRateLimit({
     message: 'Too many refresh attempts. Please try again later.',
 });
 
+const paymentOrderLimiter = createAuthRateLimit({
+    windowMinutes: 15,
+    max: 10,
+    message: 'Too many payment order requests. Please try again later.',
+});
+
+const paymentVerifyLimiter = createAuthRateLimit({
+    windowMinutes: 15,
+    max: 20,
+    message: 'Too many payment verification requests. Please try again later.',
+});
+
 module.exports = {
+    adminLoginLimiter,
     loginLimiter,
     otpResendLimiter,
     otpVerifyLimiter,
     passwordResetLimiter,
+    paymentOrderLimiter,
+    paymentVerifyLimiter,
     refreshLimiter,
     signupLimiter,
 };

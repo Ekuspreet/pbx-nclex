@@ -8,6 +8,9 @@ const { testStatusEnum, tests } = require('./test');
 const { testQuestions } = require('./testQuestion');
 const { notes } = require('./note');
 const { highlights } = require('./highlight');
+const { paymentOrders } = require('./paymentOrder');
+const { paymentWebhookEvents } = require('./paymentWebhookEvent');
+const { subscriptions } = require('./subscription');
 const {
     feedbackMessages,
     feedbackSenderTypeEnum,
@@ -29,6 +32,9 @@ module.exports = {
     testQuestions,
     notes,
     highlights,
+    paymentOrders,
+    paymentWebhookEvents,
+    subscriptions,
     feedbackMessages,
     feedbackSenderTypeEnum,
     feedbackStatusEnum,

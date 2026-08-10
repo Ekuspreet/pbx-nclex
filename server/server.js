@@ -8,10 +8,11 @@ const { env } = require('./env');
 const routes = require('./routes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
+const paymentController = require('./controllers/paymentController');
 
 const app = express();
 app.set("trust proxy", 1);
-const allowedOrigins = [env.CLIENT_URL].filter(Boolean);
+const allowedOrigin = env.CLIENT_URL;
 const publicPath = path.join(__dirname, 'public');
 const brokenDownloadPlaceholder = `
 <svg xmlns="https://www.w3.org/2000/svg" width="720" height="260" viewBox="0 0 720 260">
@@ -28,7 +29,7 @@ function setPublicAssetHeaders(res) {
 app.use(helmet());
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || origin === allowedOrigin) {
             return callback(null, true);
         }
 
@@ -36,13 +37,28 @@ app.use(cors({
     },
     credentials: true,
 }));
+app.get('/api/v1/maintenance-status', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({ maintenance: env.MAINTENANCE });
+});
+app.use((req, res, next) => {
+    if (!env.MAINTENANCE) return next();
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Retry-After', '300');
+    return res.status(503).json({
+        code: 'MAINTENANCE_MODE',
+        message: 'The application is currently under maintenance.',
+    });
+});
+app.post('/api/v1/payments/webhook', express.raw({ type: 'application/json', limit: '100kb' }), paymentController.webhook);
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 app.use(cookieParser());
 app.use('/public', express.static(publicPath, {
     setHeaders: setPublicAssetHeaders,
 }));
-app.get('/public/downloads/*', (req, res) => {
+app.get('/public/assets/*', (req, res) => {
     setPublicAssetHeaders(res);
     res.type('image/svg+xml').status(200).send(brokenDownloadPlaceholder);
 });
@@ -60,9 +76,9 @@ app.use(notFound);
 app.use(errorHandler);
 
 function startServer() {
-    const PORT = process.env.PORT || 5000;
+    const PORT = env.PORT;
 
-    app.listen(PORT, () => {
+    return app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
 }

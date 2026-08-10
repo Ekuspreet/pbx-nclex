@@ -2,17 +2,17 @@ const { and, asc, eq, inArray, sql } = require('drizzle-orm');
 
 const {
     db,
-    questionStats,
     questions,
     testQuestions,
     tests,
 } = require('../db');
 const { createHttpError } = require('./httpError');
+const { getQuestionsForPlan } = require('./freeTrialQuestionService');
+const { getPlan } = require('./planCatalog');
 const {
     buildStatsFromQuestions,
     filterQuestions,
     getCorrectAnswer,
-    getQuestionTotal,
     isAnswerCorrect,
     toClientQuestion,
 } = require('./questionBankService');
@@ -84,9 +84,29 @@ async function requireUserTest(userId, testId, database = db, lock = false) {
     return test;
 }
 
-async function createTest(userId, config) {
-    const allQuestions = await db.select().from(questions);
-    const matchingQuestions = filterQuestions(allQuestions, config);
+async function createTest(userId, config, planName = 'free') {
+    const plan = getPlan(planName);
+    const existingTests = await listUserTests(userId);
+    const availableQuestions = filterQuestions(await db.select().from(questions), {})
+        .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
+    const allQuestions = getQuestionsForPlan(availableQuestions, plan.key);
+    const userTests = existingTests;
+    const testIds = userTests.map((test) => test.id);
+    const historyRows = testIds.length > 0
+        ? await db.select().from(testQuestions).where(inArray(testQuestions.testId, testIds))
+        : [];
+    const latestRows = getLatestQuestionStates(historyRows);
+    const latestByQuestion = new Map(latestRows.map((row) => [row.questionId, row]));
+    const matchingQuestions = filterQuestions(allQuestions, config).filter((question) => {
+        const history = latestByQuestion.get(question.id);
+
+        if (config.questionMode === 'unused') return !history;
+        if (config.questionMode === 'marked') return history?.markedForReview === true;
+        if (config.questionMode === 'omitted') return history && !history.answered;
+        if (config.questionMode === 'correct') return history?.answered && isDashboardAttemptCorrect(history, question);
+        if (config.questionMode === 'incorrect') return history?.answered && !isDashboardAttemptCorrect(history, question);
+        return false;
+    });
 
     if (matchingQuestions.length < config.questionCount) {
         throw createHttpError(
@@ -474,6 +494,13 @@ function getLatestQuestionStates(questionStateRows) {
     const attempts = new Map();
 
     for (const row of questionStateRows) {
+        // A question is only "used" after it has actually been presented.
+        // Test creation also creates rows for unseen questions, which must not
+        // affect usage or performance statistics.
+        if (!row.visited && !row.answered) {
+            continue;
+        }
+
         const current = attempts.get(row.questionId);
 
         if (!current || getAttemptTimestamp(row) >= getAttemptTimestamp(current)) {
@@ -502,14 +529,19 @@ function buildLatestQuestionStats(latestQuestionRows, questionRows) {
     let correctQuestions = 0;
     let incorrectQuestions = 0;
     let omittedQuestions = 0;
+    let attemptedQuestions = 0;
+    let markedQuestions = 0;
 
     for (const row of latestQuestionRows) {
         const question = questionMap.get(row.questionId);
         const isCorrect = row.answered && isDashboardAttemptCorrect(row, question);
+        if (row.markedForReview) markedQuestions += 1;
 
         if (isCorrect) {
+            attemptedQuestions += 1;
             correctQuestions += 1;
         } else if (row.answered) {
+            attemptedQuestions += 1;
             incorrectQuestions += 1;
         } else {
             omittedQuestions += 1;
@@ -523,19 +555,24 @@ function buildLatestQuestionStats(latestQuestionRows, questionRows) {
                 dimension,
                 key,
                 label,
+                usedQuestions: 0,
                 attemptedQuestions: 0,
                 correctQuestions: 0,
                 incorrectQuestions: 0,
                 omittedQuestions: 0,
+                markedQuestions: 0,
             };
 
-            current.attemptedQuestions += 1;
+            current.usedQuestions += 1;
+            if (row.markedForReview) current.markedQuestions += 1;
 
             if (!row.answered) {
                 current.omittedQuestions += 1;
             } else if (isCorrect) {
+                current.attemptedQuestions += 1;
                 current.correctQuestions += 1;
             } else {
+                current.attemptedQuestions += 1;
                 current.incorrectQuestions += 1;
             }
 
@@ -545,11 +582,13 @@ function buildLatestQuestionStats(latestQuestionRows, questionRows) {
 
     return {
         usedQuestions: latestQuestionRows.length,
-        attemptedQuestions: latestQuestionRows.length,
+        presentedQuestions: latestQuestionRows.length,
+        attemptedQuestions,
         correctQuestions,
         incorrectQuestions,
         partiallyIncorrectQuestions: 0,
         omittedQuestions,
+        markedQuestions,
         byDimension,
     };
 }
@@ -616,8 +655,12 @@ async function listUserTests(userId) {
     return userTests.map((test) => withAuthoritativeTiming(test));
 }
 
-async function getDashboard(userId) {
-    const totalQuestions = await getQuestionTotal();
+async function getDashboard(userId, planName = 'free') {
+    const plan = getPlan(planName);
+    const availableQuestionRows = filterQuestions(await db.select().from(questions), {})
+        .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
+    const allQuestionRows = getQuestionsForPlan(availableQuestionRows, plan.key);
+    const totalQuestions = allQuestionRows.length;
     const userTests = await listUserTests(userId);
     const testIds = userTests.map((test) => test.id);
     let questionStateRows = [];
@@ -629,7 +672,10 @@ async function getDashboard(userId) {
             .where(inArray(testQuestions.testId, testIds));
     }
 
-    const latestQuestionRows = getLatestQuestionStates(questionStateRows);
+    const availableQuestionDatabaseIds = new Set(allQuestionRows.map((question) => question.id));
+    const latestQuestionRows = getLatestQuestionStates(questionStateRows)
+        .filter((row) => availableQuestionDatabaseIds.has(row.questionId));
+    const latestByQuestion = new Map(latestQuestionRows.map((row) => [row.questionId, row]));
     const usedQuestionIds = latestQuestionRows.map((row) => row.questionId);
     let usedQuestionRows = [];
 
@@ -640,15 +686,28 @@ async function getDashboard(userId) {
             .where(inArray(questions.id, usedQuestionIds));
     }
 
-    let storedStats = await db.select().from(questionStats);
-
-    if (storedStats.length === 0) {
-        storedStats = buildStatsFromQuestions(await db.select().from(questions));
-    }
+    const storedStats = buildStatsFromQuestions(allQuestionRows);
 
     const usedStats = buildStatsFromQuestions(usedQuestionRows);
     const usedMap = new Map(usedStats.map((stat) => [`${stat.dimension}:${stat.key}`, stat.totalQuestions]));
     const latestQuestionStats = buildLatestQuestionStats(latestQuestionRows, usedQuestionRows);
+    const filterStats = allQuestionRows.map((question) => {
+        const history = latestByQuestion.get(question.id);
+        const modes = [];
+
+        if (!history) modes.push('unused');
+        else if (!history.answered) modes.push('omitted');
+        else if (isDashboardAttemptCorrect(history, question)) modes.push('correct');
+        else modes.push('incorrect');
+
+        if (history?.markedForReview) modes.push('marked');
+
+        return {
+            subject: getDashboardTaxonomyValue(question, 'subject'),
+            system: getDashboardTaxonomyValue(question, 'system'),
+            modes,
+        };
+    });
     const toRows = (dimension) => storedStats
         .filter((stat) => stat.dimension === dimension)
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -659,23 +718,28 @@ async function getDashboard(userId) {
                 key: stat.key,
                 label: stat.label,
                 totalQuestions: stat.totalQuestions,
-                usedQuestions: usedMap.get(`${dimension}:${stat.key}`) || 0,
-                attemptedQuestions: usedMap.get(`${dimension}:${stat.key}`) || 0,
+                usedQuestions: questionStat?.usedQuestions || usedMap.get(`${dimension}:${stat.key}`) || 0,
+                presentedQuestions: questionStat?.usedQuestions || 0,
+                attemptedQuestions: questionStat?.attemptedQuestions || 0,
                 correctQuestions: questionStat?.correctQuestions || 0,
                 incorrectQuestions: questionStat?.incorrectQuestions || 0,
                 partiallyIncorrectQuestions: 0,
                 omittedQuestions: questionStat?.omittedQuestions || 0,
+                markedQuestions: questionStat?.markedQuestions || 0,
             };
         });
 
     return {
         totalQuestions,
         usedQuestions: latestQuestionStats.usedQuestions,
-        attemptedQuestions: latestQuestionStats.usedQuestions,
+        presentedQuestions: latestQuestionStats.presentedQuestions,
+        attemptedQuestions: latestQuestionStats.attemptedQuestions,
         correctQuestions: latestQuestionStats.correctQuestions,
         incorrectQuestions: latestQuestionStats.incorrectQuestions,
         partiallyIncorrectQuestions: 0,
         omittedQuestions: latestQuestionStats.omittedQuestions,
+        markedQuestions: latestQuestionStats.markedQuestions,
+        filterStats,
         subjects: toRows('subject'),
         systems: toRows('system'),
         tests: userTests.slice(0, 8),

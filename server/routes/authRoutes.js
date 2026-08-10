@@ -8,7 +8,6 @@ const {
     otpVerifyLimiter,
     passwordResetLimiter,
     refreshLimiter,
-    signupLimiter,
 } = require('../middleware/rateLimits');
 const validate = require('../middleware/validate');
 const {
@@ -17,13 +16,13 @@ const {
     loginSchema,
     resendOtpSchema,
     resetPasswordSchema,
-    signupSchema,
+    setPasswordSchema,
+    updateProfileSchema,
     verifyEmailSchema,
 } = require('../validators');
 
 const router = express.Router();
 
-router.post('/signup', signupLimiter, validate({ body: signupSchema }), authController.signup);
 router.post('/verify-email', otpVerifyLimiter, validate({ body: verifyEmailSchema }), authController.verifyEmail);
 router.post('/resend-otp', otpResendLimiter, validate({ body: resendOtpSchema }), authController.resendOtp);
 router.post('/login', loginLimiter, validate({ body: loginSchema }), authController.login);
@@ -32,6 +31,8 @@ router.post('/refresh', refreshLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.post('/logout-all', authController.logoutAll);
 router.get('/me', authenticate, authController.me);
+router.patch('/profile', authenticate, validate({ body: updateProfileSchema }), authController.updateProfile);
+router.post('/set-password', authenticate, validate({ body: setPasswordSchema }), authController.setPassword);
 router.post('/forgot-password', passwordResetLimiter, validate({ body: forgotPasswordSchema }), authController.forgotPassword);
 router.post('/reset-password', passwordResetLimiter, validate({ body: resetPasswordSchema }), authController.resetPassword);
 

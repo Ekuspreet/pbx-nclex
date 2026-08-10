@@ -44,6 +44,27 @@ const loginSchema = z.object({
     password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
 });
 
+const updateProfileSchema = z.object({
+    name: z.string().trim().min(2, 'Enter at least 2 characters.').max(100),
+    phone: z.union([
+        z.string().trim().regex(/^\+?[0-9][0-9\s()-]{6,19}$/, 'Enter a valid contact number.'),
+        z.literal(''),
+    ]).transform((value) => value || null),
+});
+
+const setPasswordSchema = z.object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+}).superRefine(({ password, confirmPassword }, ctx) => {
+    if (password !== confirmPassword) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['confirmPassword'],
+            message: 'Passwords must match.',
+        });
+    }
+});
+
 module.exports = {
     forgotPasswordSchema,
     googleSignInSchema,
@@ -52,4 +73,6 @@ module.exports = {
     signupSchema,
     verifyEmailSchema,
     loginSchema,
+    setPasswordSchema,
+    updateProfileSchema,
 };

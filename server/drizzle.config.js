@@ -7,7 +7,7 @@ module.exports = {
     out: './db/migrations',
     dialect: 'postgresql',
     dbCredentials: {
-        url: buildDatabaseUrl(),
+        url: process.env.DATABASE_URL || buildDatabaseUrl(),
     },
     strict: true,
     verbose: true,

@@ -17,7 +17,7 @@ async function index(req, res, next) {
 
 async function create(req, res, next) {
     try {
-        const highlight = await createHighlight(req.user.id, req.body);
+        const highlight = await createHighlight(req.user.id, req.body, req.user.plan);
         res.status(201).json({ highlight });
     } catch (error) {
         next(error);
@@ -26,7 +26,7 @@ async function create(req, res, next) {
 
 async function replace(req, res, next) {
     try {
-        const highlights = await replaceQuestionHighlights(req.user.id, req.body);
+        const highlights = await replaceQuestionHighlights(req.user.id, req.body, req.user.plan);
         res.status(200).json({ highlights });
     } catch (error) {
         next(error);

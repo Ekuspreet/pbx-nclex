@@ -3,8 +3,10 @@ const {
     loginWithEmailPassword,
     requestPasswordReset,
     resetPassword,
+    setInitialPassword,
     resendSignupOtp,
     signupWithEmailPassword,
+    updateUserProfile,
     verifySignupEmail,
 } = require('../services/authService');
 const {
@@ -102,7 +104,10 @@ async function google(req, res, next) {
 
 async function forgotPassword(req, res, next) {
     try {
-        await requestPasswordReset(req.body);
+        await requestPasswordReset({
+            ...req.body,
+            requestOrigin: env.CLIENT_URL,
+        });
 
         res.status(202).json({
             message: 'If an eligible account exists, a password reset link has been sent.',
@@ -201,6 +206,24 @@ function me(req, res) {
     });
 }
 
+async function updateProfile(req, res, next) {
+    try {
+        const result = await updateUserProfile(req.user.id, req.body);
+        res.status(200).json({ message: 'Profile updated.', user: result.user });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function setPassword(req, res, next) {
+    try {
+        const result = await setInitialPassword(req.user.id, req.body);
+        res.status(200).json({ message: 'Password set. You can now log in with your email and password.', user: result.user });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     forgotPassword,
     google,
@@ -211,6 +234,8 @@ module.exports = {
     refresh,
     resendOtp,
     resetPassword: resetPasswordController,
+    setPassword,
     signup,
+    updateProfile,
     verifyEmail,
 };

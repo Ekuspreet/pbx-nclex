@@ -19,6 +19,10 @@ function isSingleEmailAddress(value) {
     return /^[^\s@]+@[^\s@]+$/.test(String(value).trim());
 }
 
+function hasMinimumSecretStrength(value) {
+    return typeof value === 'string' && value.length >= 32;
+}
+
 const env = {
     NODE_ENV: readEnv('NODE_ENV', 'development'),
     PORT: readEnv('PORT', '5000'),
@@ -30,6 +34,7 @@ const env = {
 
     CLIENT_URL: readEnv('CLIENT_URL', 'http://localhost:5173'),
     SERVER_URL: readEnv('SERVER_URL', 'http://localhost:5000'),
+    MAINTENANCE: String(readEnv('MAINTENANCE', 'false')).toLowerCase() === 'true',
 
     ACCESS_TOKEN_SECRET: readEnv('ACCESS_TOKEN_SECRET'),
     ACCESS_TOKEN_EXPIRES_IN: readEnv('ACCESS_TOKEN_EXPIRES_IN', '15m'),
@@ -65,11 +70,15 @@ const env = {
     GOOGLE_MAIL_REFRESH_TOKEN: readEnv('GOOGLE_MAIL_REFRESH_TOKEN'),
 
     APP_NAME: readEnv('APP_NAME', 'PBX Nursing'),
+    RAZORPAY_KEY_ID: readEnv('RAZORPAY_KEY_ID'),
+    RAZORPAY_KEY_SECRET: readEnv('RAZORPAY_KEY_SECRET'),
+    RAZORPAY_WEBHOOK_SECRET: readEnv('RAZORPAY_WEBHOOK_SECRET'),
 };
 
 function validateEnv() {
     const errors = [];
     const supportedEmailProviders = new Set(['console', 'gmail']);
+    const supportedSameSiteValues = new Set(['lax', 'strict', 'none']);
 
     for (const key of ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD']) {
         if (!env[key]) {
@@ -79,6 +88,14 @@ function validateEnv() {
 
     if (!supportedEmailProviders.has(env.EMAIL_PROVIDER)) {
         errors.push('EMAIL_PROVIDER must be either "console" or "gmail".');
+    }
+
+    if (!supportedSameSiteValues.has(String(env.COOKIE_SAME_SITE).toLowerCase())) {
+        errors.push('COOKIE_SAME_SITE must be "lax", "strict", or "none".');
+    }
+
+    if (String(env.COOKIE_SAME_SITE).toLowerCase() === 'none' && env.COOKIE_SECURE !== 'true') {
+        errors.push('COOKIE_SECURE must be true when COOKIE_SAME_SITE=none.');
     }
 
     if (env.NODE_ENV === 'production' && env.EMAIL_PROVIDER === 'console') {
@@ -113,6 +130,28 @@ function validateEnv() {
 
         if (!env.ADMIN_TOKEN_SECRET) {
             errors.push('ADMIN_TOKEN_SECRET is required in production.');
+        }
+
+        for (const key of ['ACCESS_TOKEN_SECRET', 'REFRESH_TOKEN_SECRET', 'ADMIN_TOKEN_SECRET']) {
+            if (!hasMinimumSecretStrength(env[key])) {
+                errors.push(`${key} must contain at least 32 characters in production.`);
+            }
+        }
+
+        if (env.ADMIN_PASSWORD && env.ADMIN_PASSWORD.length < 12) {
+            errors.push('ADMIN_PASSWORD must contain at least 12 characters in production.');
+        }
+
+        if (env.COOKIE_SECURE !== 'true') {
+            errors.push('COOKIE_SECURE must be true in production.');
+        }
+
+        try {
+            if (new URL(env.CLIENT_URL).protocol !== 'https:') {
+                errors.push('CLIENT_URL must use HTTPS in production.');
+            }
+        } catch {
+            errors.push('CLIENT_URL must be a valid absolute URL.');
         }
     }
 

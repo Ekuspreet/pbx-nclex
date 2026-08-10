@@ -1,8 +1,9 @@
-const { and, desc, eq } = require('drizzle-orm');
+const { and, desc, eq, sql } = require('drizzle-orm');
 
 const { db, notes, questions, tests } = require('../db');
 const { createHttpError } = require('./httpError');
 const { toClientQuestion } = require('./questionBankService');
+const { getPlan } = require('./planCatalog');
 
 function createNotFoundError(resource = 'Resource') {
     return createHttpError(404, `${resource} not found.`);
@@ -78,8 +79,13 @@ async function getNote(userId, noteId) {
     return result;
 }
 
-async function createNote(userId, payload) {
+async function createNote(userId, payload, planName = 'free') {
     await assertTestBelongsToUser(userId, payload.testId);
+    const limit = getPlan(planName).limits.notes;
+    if (limit !== null) {
+        const [row] = await db.select({ count: sql`count(*)::int` }).from(notes).where(eq(notes.userId, userId));
+        if ((row?.count || 0) >= limit) throw createHttpError(403, `The Free plan allows ${limit} notes. Upgrade to Plus for unlimited notes.`);
+    }
 
     const now = new Date();
     const [note] = await db

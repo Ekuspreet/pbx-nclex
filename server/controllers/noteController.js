@@ -26,7 +26,7 @@ async function show(req, res, next) {
 
 async function create(req, res, next) {
     try {
-        const note = await createNote(req.user.id, req.body);
+        const note = await createNote(req.user.id, req.body, req.user.plan);
         res.status(201).json({ note });
     } catch (error) {
         next(error);

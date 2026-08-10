@@ -1,6 +1,6 @@
-const { eq } = require('drizzle-orm');
+const { and, desc, eq, gt } = require('drizzle-orm');
 
-const { db, users } = require('../db');
+const { db, subscriptions, users } = require('../db');
 const { env } = require('../env');
 const { toPublicUser, verifyAccessToken } = require('../utils/auth');
 
@@ -31,8 +31,10 @@ async function authenticate(req, res, next) {
             .select({
                 id: users.id,
                 name: users.name,
+                phone: users.phone,
                 email: users.email,
                 emailVerified: users.emailVerified,
+                passwordHash: users.passwordHash,
                 status: users.status,
             })
             .from(users)
@@ -43,7 +45,19 @@ async function authenticate(req, res, next) {
             throw createUnauthorizedError();
         }
 
-        req.user = toPublicUser(user);
+        const now = new Date();
+        const [subscription] = await db
+            .select({ plan: subscriptions.plan, expiresAt: subscriptions.expiresAt })
+            .from(subscriptions)
+            .where(and(eq(subscriptions.userId, user.id), gt(subscriptions.expiresAt, now)))
+            .orderBy(desc(subscriptions.expiresAt))
+            .limit(1);
+
+        req.user = toPublicUser({
+            ...user,
+            plan: subscription?.plan || 'free',
+            subscriptionExpiresAt: subscription?.expiresAt || null,
+        });
         req.auth = {
             accessTokenId: payload.jti,
         };
