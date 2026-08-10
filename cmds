@@ -26,6 +26,13 @@ replace the email argument with the account to grant access
 podman-compose -f podman-compose.yaml exec server npm run user:mock-paid -- user@example.com
 
 
+secure copy the contents of a local folder into a folder on the server
+replace the source path, SSH user, server address, and destination path
+the trailing /. copies the contents instead of nesting the source folder
+
+scp -r /path/to/local-folder/. SSH_USER@SERVER_HOST:/path/to/server-folder/
+
+
 
 open psql using the user and password from postgres/.env
 set -a; . ./postgres/.env; set +a; PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
