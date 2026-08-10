@@ -16,3 +16,38 @@ podman rm -f pbx-nursing-server
 podman-compose -f podman-compose.yaml up -d --build server
 
 podman-compose -f podman-compose.yaml exec server npm run questions:import
+
+podman-compose -f podman-compose.yaml exec server npm run db:migrate
+
+
+create or update a mock paid user with effectively infinite premium access
+replace the email argument with the account to grant access
+
+podman-compose -f podman-compose.yaml exec server npm run user:mock-paid -- user@example.com
+
+
+
+open psql using the user and password from postgres/.env
+set -a; . ./postgres/.env; set +a; PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+
+
+only during developement
+// delete the entire db
+
+
+REMOTE PODMAN DATABASE RESET (DESTRUCTIVE)
+
+WARNING: This permanently deletes every table and all data in the database named by
+POSTGRES_DB inside the pbx-nursing-postgres container. Run this on the remote host
+from the project directory. It does not delete the Podman volume or other databases.
+
+podman exec pbx-nursing-postgres sh -lc 'dropdb --force --if-exists --username "$POSTGRES_USER" "$POSTGRES_DB" && createdb --username "$POSTGRES_USER" --owner "$POSTGRES_USER" "$POSTGRES_DB"'
+
+
+SET UP DATABASE SCHEMA FROM A DATABASE CONNECTION STRING
+
+Replace the example value with the complete PostgreSQL connection string. Quoting the
+value prevents shell expansion of special characters in the URL. This applies every
+pending Drizzle migration to that database.
+
+podman-compose -f podman-compose.yaml build server && podman-compose -f podman-compose.yaml run --rm -e DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require' server npm run db:migrate
