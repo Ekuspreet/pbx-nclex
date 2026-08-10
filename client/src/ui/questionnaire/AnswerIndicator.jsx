@@ -4,8 +4,8 @@ function AnswerIndicator({ show, correct, className = '' }) {
   }
 
   return (
-    <span className={`answer-indicator ${className}`} style={{ color: correct ? 'green' : 'red' }}>
-      {correct ? '✓' : '✕'}
+    <span className={`answer-indicator material-symbols-outlined ${correct ? 'text-success' : 'text-error'} ${className}`}>
+      {correct ? 'check' : 'close'}
     </span>
   )
 }

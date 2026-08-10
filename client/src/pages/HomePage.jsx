@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
-import { brand, pricing } from '../content/landing/index.js'
+import { brand } from '../content/landing/index.js'
 import {
+  createHighlight,
   createTest,
   deleteHighlight,
   getDashboard,
   getFeedback,
-  getQuestionStats,
+  getPaymentHistory,
   listFeedback,
   listHighlights,
   listNotes,
@@ -15,8 +17,12 @@ import {
   replyFeedback,
 } from '../services/studyAdapter.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
-import QuestionPreviewModal from '../ui/questionnaire/QuestionPreviewModal.jsx'
+import QuestionReviewModal from '../ui/questionnaire/QuestionReviewModal.jsx'
 import { NotebookViewer } from '../features/test/components/NotesModal.jsx'
+import Modal from '../features/test/components/Modal.jsx'
+import { apiRequest, getApiErrorMessage } from '../services/apiClient.js'
+import { usePlanCatalog } from '../hooks/usePlanCatalog.js'
+import { queryKeys } from '../services/queryKeys.js'
 
 const navGroups = [{
   label: 'Menu',
@@ -43,6 +49,24 @@ const pageContent = {
   notes: { eyebrow: 'Notes', title: 'Notes' },
 }
 
+function getTimeGreeting(date = new Date()) {
+  const hour = date.getHours()
+  if (hour < 12) return 'Good Morning'
+  if (hour < 17) return 'Good Afternoon'
+  return 'Good Evening'
+}
+
+function useTimeGreeting() {
+  const [greeting, setGreeting] = useState(() => getTimeGreeting())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setGreeting(getTimeGreeting()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  return greeting
+}
+
 function getPageContent(page) {
   return pageContent[page] ?? pageContent.dashboard
 }
@@ -55,6 +79,13 @@ function getUserPlan(user) {
 
 function getPlanBadgeClass(plan) {
   return plan === 'plus' ? 'badge-primary' : 'badge-outline'
+}
+
+function getMembershipLabel(user) {
+  if (getUserPlan(user) !== 'plus' || !user?.subscriptionExpiresAt) return 'Free plan'
+  const remainingMs = new Date(user.subscriptionExpiresAt).getTime() - Date.now()
+  const days = Math.max(0, Math.ceil(remainingMs / 86_400_000))
+  return days === 1 ? '1 day left' : `${days} days left`
 }
 
 function LoadingState() {
@@ -82,15 +113,69 @@ function getPercent(value, total) {
   return `${Math.round((value / total) * 100)}%`
 }
 
+const PERFORMANCE_ANIMATION_DURATION = 1400
+const PERFORMANCE_RING_DELAY = 90
+
+function easePerformanceProgress(progress) {
+  // Mirrors cubic-bezier(0.22, 1, 0.36, 1) used by the progress rings.
+  const x1 = 0.22
+  const y1 = 1
+  const x2 = 0.36
+  const y2 = 1
+  let position = progress
+
+  for (let index = 0; index < 5; index += 1) {
+    const inverse = 1 - position
+    const x = (3 * inverse * inverse * position * x1) + (3 * inverse * position * position * x2) + (position ** 3)
+    const slope = (3 * inverse * inverse * x1) + (6 * inverse * position * (x2 - x1)) + (3 * position * position * (1 - x2))
+    if (Math.abs(slope) < 0.0001) break
+    position -= (x - progress) / slope
+  }
+
+  const inverse = 1 - position
+  return (3 * inverse * inverse * position * y1) + (3 * inverse * position * position * y2) + (position ** 3)
+}
+
+function AnimatedNumber({ value, delay = 0 }) {
+  const numericValue = Number.parseFloat(value)
+  const target = Math.round(Number.isFinite(numericValue) ? numericValue : 0)
+  const [displayValue, setDisplayValue] = useState(0)
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplayValue(target)
+      return undefined
+    }
+
+    let animationFrame
+    const startedAt = window.performance.now() + delay
+
+    const update = (now) => {
+      const progress = Math.min(1, Math.max(0, (now - startedAt) / PERFORMANCE_ANIMATION_DURATION))
+      setDisplayValue(Math.round(target * easePerformanceProgress(progress)))
+      if (progress < 1) animationFrame = window.requestAnimationFrame(update)
+    }
+
+    animationFrame = window.requestAnimationFrame(update)
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [delay, target])
+
+  return displayValue
+}
+
 function PerformanceOverview({ rows, total }) {
   const radii = [92, 79, 66, 53, 40, 27]
+  const ringRows = [
+    ...rows.filter((row) => row.label !== 'Partially Incorrect'),
+    ...rows.filter((row) => row.label === 'Partially Incorrect'),
+  ]
 
   return (
     <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-8 md:px-10 md:py-9" aria-label="Performance overview">
       <div className="grid items-center gap-8 lg:grid-cols-[340px_400px] lg:gap-10">
         <svg className="mx-auto size-64 overflow-visible md:size-72" role="img" viewBox="0 0 220 220" aria-label="Question performance rings">
           <g transform="rotate(-90 110 110)">
-            {rows.map((row, index) => (
+            {ringRows.map((row, index) => (
               <circle
                 className={`circular-progress-trace ${row.color}`}
                 cx="110"
@@ -112,15 +197,18 @@ function PerformanceOverview({ rows, total }) {
         <div className="w-full max-w-[400px]">
           <h2 className="mb-5 text-lg font-bold text-base-content">Performance Overview</h2>
           <dl className="grid gap-4">
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const ringIndex = ringRows.findIndex((ringRow) => ringRow.label === row.label)
+              return (
               <div className="flex items-center justify-between gap-8" key={row.label}>
                 <dt className="text-sm text-base-content/80">{row.label}</dt>
-                <dd className={`min-w-16 rounded-full px-3 py-1 text-center text-xs font-bold text-white shadow-sm ${row.badge}`}>{row.percent}%</dd>
+                <dd className={`min-w-16 rounded-full px-3 py-1 text-center text-xs font-bold text-white shadow-sm ${row.badge}`}><AnimatedNumber delay={ringIndex * PERFORMANCE_RING_DELAY} value={row.percent} />%</dd>
               </div>
-            ))}
+              )
+            })}
             <div className="mt-1 flex items-center justify-between gap-8 border-t border-base-300 pt-4">
               <dt className="text-sm font-bold text-base-content">Total Questions</dt>
-              <dd className="min-w-16 rounded-full bg-neutral px-3 py-1 text-center text-xs font-bold text-neutral-content shadow-sm">{total}</dd>
+              <dd className="min-w-16 rounded-full bg-neutral px-3 py-1 text-center text-xs font-bold text-neutral-content shadow-sm"><AnimatedNumber value={total} /></dd>
             </div>
           </dl>
         </div>
@@ -130,41 +218,25 @@ function PerformanceOverview({ rows, total }) {
 }
 
 function PerformancePageContent() {
-  const [state, setState] = useState({ loading: true, error: '', data: null })
-
-  useEffect(() => {
-    let active = true
-
-    getDashboard()
-      .then((data) => {
-        if (active) setState({ loading: false, error: '', data })
-      })
-      .catch((error) => {
-        if (active) setState({ loading: false, error: error.message, data: null })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  if (state.loading) return <LoadingState />
-  if (state.error) return <ErrorState message={state.error} />
-
-  const { data } = state
+  const dashboardQuery = useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard })
+  if (dashboardQuery.isPending) return <LoadingState />
+  if (dashboardQuery.isError) return <ErrorState message={dashboardQuery.error.message} />
+  const data = dashboardQuery.data
   const total = asCount(data.totalQuestions)
-  const used = asCount(data.usedQuestions ?? data.attemptedQuestions)
+  const used = asCount(data.usedQuestions)
+  const attempted = asCount(data.attemptedQuestions)
   const correct = asCount(data.correctQuestions)
   const incorrect = asCount(data.incorrectQuestions)
   const partiallyIncorrect = asCount(data.partiallyIncorrectQuestions)
-  const omitted = asCount(data.omittedQuestions ?? Math.max(used - correct - incorrect, 0))
+  const omitted = asCount(data.omittedQuestions)
+  const presented = asCount(data.presentedQuestions ?? attempted + omitted)
   const percent = (value, denominator) => denominator > 0 ? Math.round((value / denominator) * 100) : 0
   const overviewRows = [
     { label: 'Unused Questions', percent: percent(Math.max(total - used, 0), total), color: 'text-base-content/45', badge: 'bg-base-content/45' },
-    { label: 'Correct', percent: percent(correct, total), color: 'text-success', badge: 'bg-success' },
-    { label: 'Incorrect', percent: percent(incorrect, total), color: 'text-error', badge: 'bg-error' },
-    { label: 'Partially Incorrect', percent: percent(partiallyIncorrect, total), color: 'text-warning', badge: 'bg-warning' },
-    { label: 'Omitted', percent: percent(omitted, total), color: 'text-neutral/75', badge: 'bg-neutral/75' },
+    { label: 'Correct', percent: percent(correct, attempted), color: 'text-success', badge: 'bg-success' },
+    { label: 'Incorrect', percent: percent(incorrect, attempted), color: 'text-error', badge: 'bg-error' },
+    { label: 'Partially Incorrect', percent: percent(partiallyIncorrect, attempted), color: 'text-warning', badge: 'bg-warning' },
+    { label: 'Omitted', percent: percent(omitted, presented), color: 'text-neutral/75', badge: 'bg-neutral/75' },
     { label: 'Used Questions', percent: percent(used, total), color: 'text-info', badge: 'bg-info' },
   ]
 
@@ -179,6 +251,9 @@ function PerformancePageContent() {
 
 function DashboardPageContent({ user }) {
   const name = user?.name || 'PBX learner'
+  const greeting = useTimeGreeting()
+  const currentPlan = getUserPlan(user)
+  const membershipLabel = getMembershipLabel(user)
   const tiles = [
     { href: '/performance', icon: 'analytics', title: 'Performance', copy: "See if you're ready to pass" },
     { href: '/tests/create', icon: 'add_box', title: 'Create Test', copy: 'Study up to 85 questions at a time' },
@@ -193,11 +268,11 @@ function DashboardPageContent({ user }) {
   return (
     <div className="grid gap-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-base-content md:text-3xl">Good Morning, {name}</h1>
+        <h1 className="text-2xl font-semibold text-base-content md:text-3xl">{greeting}, {name}</h1>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-full border border-base-300 bg-base-100 py-1 pl-4 pr-1 text-sm font-semibold">
-            <span>22 days left</span>
-            <Link className="btn btn-secondary btn-sm rounded-full px-4" to="/pricing">Upgrade</Link>
+            <span>{membershipLabel}</span>
+            <Link className="btn btn-secondary btn-sm rounded-full px-4" to="/pricing">{currentPlan === 'plus' ? 'Renew' : 'Upgrade'}</Link>
           </div>
           <Link className="avatar avatar-placeholder" to="/profile"><div className="w-9 rounded-full bg-secondary/15 text-secondary"><span className="font-bold">{name[0]}</span></div></Link>
         </div>
@@ -211,6 +286,35 @@ function DashboardPageContent({ user }) {
               <span className="text-xl text-base-content/45">›</span>
             </div>
           </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OutcomeProgressBar({ correct, incorrect, omitted, total }) {
+  const totalQuestions = Math.max(0, asCount(total))
+  const outcomes = [
+    { label: 'correct', count: Math.max(0, asCount(correct)), className: 'bg-success' },
+    { label: 'incorrect', count: Math.max(0, asCount(incorrect)), className: 'bg-error' },
+    { label: 'omitted', count: Math.max(0, asCount(omitted)), className: 'bg-neutral/75' },
+  ]
+  const completed = outcomes.reduce((sum, outcome) => sum + outcome.count, 0)
+  const completedPercent = totalQuestions > 0 ? Math.min(100, (completed / totalQuestions) * 100) : 0
+
+  return (
+    <div
+      className="mt-2 h-2 w-full overflow-hidden rounded-full bg-base-300 shadow-inner"
+      role="img"
+      aria-label={`${outcomes[0].count} correct, ${outcomes[1].count} incorrect, ${outcomes[2].count} omitted out of ${totalQuestions} questions`}
+    >
+      <div className="taxonomy-progress-fill flex h-full origin-left overflow-hidden rounded-full" style={{ width: `${completedPercent}%` }}>
+        {outcomes.map((outcome) => (
+          <span
+            className={`h-full ${outcome.className}`}
+            key={outcome.label}
+            style={{ width: completed > 0 ? `${(outcome.count / completed) * 100}%` : '0%' }}
+          />
         ))}
       </div>
     </div>
@@ -241,19 +345,31 @@ function StatTable({ subjects = [], systems = [] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.key}>
-                <td className="min-w-64">
-                  <span>{row.label}</span>
-                  <progress className="progress progress-success mt-2 block h-1.5 w-full" max={row.totalQuestions || 1} value={row.usedQuestions ?? row.attemptedQuestions} />
-                </td>
-                <td>{row.usedQuestions ?? row.attemptedQuestions}/{row.totalQuestions}</td>
-                <td>{row.correctQuestions} / {row.totalQuestions} ({getPercent(row.correctQuestions, row.totalQuestions)})</td>
-                <td>{row.correctQuestions} ({getPercent(row.correctQuestions, row.totalQuestions)})</td>
-                <td>{row.incorrectQuestions} ({getPercent(row.incorrectQuestions, row.totalQuestions)})</td>
-                <td>{row.omittedQuestions ?? 0} ({getPercent(row.omittedQuestions ?? 0, row.totalQuestions)})</td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const attempted = asCount(row.attemptedQuestions)
+              const omitted = asCount(row.omittedQuestions)
+              const presented = asCount(row.presentedQuestions ?? attempted + omitted)
+              const used = asCount(row.usedQuestions)
+
+              return (
+                <tr key={`${activeTab}:${row.key}`}>
+                  <td className="min-w-64">
+                    <span>{row.label}</span>
+                    <OutcomeProgressBar
+                      correct={row.correctQuestions}
+                      incorrect={row.incorrectQuestions}
+                      omitted={omitted}
+                      total={row.totalQuestions}
+                    />
+                  </td>
+                  <td><AnimatedNumber value={used} />/<AnimatedNumber value={row.totalQuestions} /></td>
+                  <td><AnimatedNumber value={row.correctQuestions} /> / <AnimatedNumber value={attempted} /> (<AnimatedNumber value={getPercent(row.correctQuestions, attempted)} />%)</td>
+                  <td><AnimatedNumber value={row.correctQuestions} /> (<AnimatedNumber value={getPercent(row.correctQuestions, attempted)} />%)</td>
+                  <td><AnimatedNumber value={row.incorrectQuestions} /> (<AnimatedNumber value={getPercent(row.incorrectQuestions, attempted)} />%)</td>
+                  <td><AnimatedNumber value={omitted} /> (<AnimatedNumber value={getPercent(omitted, presented)} />%)</td>
+                </tr>
+              )
+            })}
             {rows.length === 0 ? (
               <tr>
                 <td colSpan="6">No statistics available yet.</td>
@@ -268,32 +384,29 @@ function StatTable({ subjects = [], systems = [] }) {
 
 function CreateTestPageContent() {
   const navigate = useNavigate()
-  const [statsState, setStatsState] = useState({ loading: true, error: '', data: null })
+  const queryClient = useQueryClient()
+  const statsQuery = useQuery({ queryKey: queryKeys.dashboard, queryFn: getDashboard })
+  const createTestMutation = useMutation({ mutationFn: createTest })
+  const filtersInitialized = useRef(false)
   const [form, setForm] = useState({
     tutorMode: true,
     timed: false,
     questionCount: 10,
+    questionMode: 'unused',
     subjects: [],
     systems: [],
   })
-  const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
-    let active = true
-
-    getQuestionStats()
-      .then((data) => {
-        if (active) setStatsState({ loading: false, error: '', data })
-      })
-      .catch((error) => {
-        if (active) setStatsState({ loading: false, error: error.message, data: null })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [])
+    if (!statsQuery.data || filtersInitialized.current) return
+    filtersInitialized.current = true
+    setForm((current) => ({
+      ...current,
+      subjects: (statsQuery.data.subjects || []).map((option) => option.key),
+      systems: (statsQuery.data.systems || []).map((option) => option.key),
+    }))
+  }, [statsQuery.data])
 
   const toggle = (group, key) => {
     setForm((current) => {
@@ -306,27 +419,40 @@ function CreateTestPageContent() {
 
   const submit = async (event) => {
     event.preventDefault()
-    setSubmitting(true)
     setSubmitError('')
 
     try {
-      const payload = await createTest({
+      const payload = await createTestMutation.mutateAsync({
         ...form,
         questionCount: Number(form.questionCount),
       })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tests })
       navigate(`/tests/${payload.test.id}`)
     } catch (error) {
       setSubmitError(error.message)
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { /* mutation tracks pending state */ }
   }
 
-  if (statsState.loading) return <LoadingState />
-  if (statsState.error) return <ErrorState message={statsState.error} />
+  if (statsQuery.isPending) return <LoadingState />
+  if (statsQuery.isError) return <ErrorState message={statsQuery.error.message} />
 
-  const totalQuestions = statsState.data.subjects.reduce((sum, option) => sum + asCount(option.totalQuestions), 0)
-  const maxQuestions = Math.min(totalQuestions, 80)
+  const filterStats = statsQuery.data.filterStats || []
+  const matchesMode = (row, mode = form.questionMode) => row.modes?.includes(mode)
+  const matchesSubjects = (row) => form.subjects.includes(row.subject)
+  const matchesSystems = (row) => form.systems.includes(row.system)
+  const matchesSelectedSubjectsForCount = (row) => form.subjects.length === 0 || matchesSubjects(row)
+  const matchesSelectedSystemsForCount = (row) => form.systems.length === 0 || matchesSystems(row)
+  const getSubjectCount = (option) => filterStats.filter((row) => row.subject === option.key && matchesSelectedSystemsForCount(row) && matchesMode(row)).length
+  const getSystemCount = (option) => filterStats.filter((row) => row.system === option.key && matchesSelectedSubjectsForCount(row) && matchesMode(row)).length
+  const modeCounts = {
+    unused: filterStats.filter((row) => matchesMode(row, 'unused') && matchesSubjects(row) && matchesSystems(row)).length,
+    incorrect: filterStats.filter((row) => matchesMode(row, 'incorrect') && matchesSubjects(row) && matchesSystems(row)).length,
+    marked: filterStats.filter((row) => matchesMode(row, 'marked') && matchesSubjects(row) && matchesSystems(row)).length,
+    omitted: filterStats.filter((row) => matchesMode(row, 'omitted') && matchesSubjects(row) && matchesSystems(row)).length,
+    correct: filterStats.filter((row) => matchesMode(row, 'correct') && matchesSubjects(row) && matchesSystems(row)).length,
+  }
+  const matchingQuestionCount = filterStats.filter((row) => matchesMode(row) && matchesSubjects(row) && matchesSystems(row)).length
+  const maxQuestions = Math.min(matchingQuestionCount, 85)
 
   return (
     <form className="grid gap-8" onSubmit={submit}>
@@ -337,11 +463,11 @@ function CreateTestPageContent() {
         <div className="flex flex-wrap gap-x-12 gap-y-4">
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.tutorMode} onChange={(event) => setForm({ ...form, tutorMode: event.target.checked })} />
-            <span className="label-text">Tutor</span>
+            <span className="label-text text-black">Tutor</span>
           </label>
           <label className="label cursor-pointer justify-start gap-3">
             <input className="toggle toggle-primary" type="checkbox" checked={form.timed} onChange={(event) => setForm({ ...form, timed: event.target.checked })} />
-            <span className="label-text">Timed</span>
+            <span className="label-text text-black">Timed</span>
           </label>
         </div>
       </fieldset>
@@ -349,49 +475,66 @@ function CreateTestPageContent() {
       <fieldset>
         <legend className="text-h6 mb-4 flex items-center gap-2">
           Question Mode
-          <span className="tooltip tooltip-right" data-tip="Question history filters will become available as you complete tests.">
+          <span className="tooltip tooltip-right" data-tip="Choose one question history mode. Counts update with the selected subjects and systems.">
             <span className="material-symbols-outlined text-info" aria-label="About question modes">info</span>
           </span>
         </legend>
-        <div className="flex flex-wrap gap-x-10 gap-y-3">
-          <QuestionModeOption count={totalQuestions} label="Unused" selected />
-          <QuestionModeOption count={0} label="Incorrect" />
-          <QuestionModeOption count={0} label="Marked" />
-          <QuestionModeOption count={0} label="Omitted" />
-          <QuestionModeOption count={0} label="Correct" />
+        <div className="flex flex-wrap gap-x-10 gap-y-3" role="radiogroup" aria-label="Question mode">
+          {[
+            ['unused', 'Unused'],
+            ['incorrect', 'Incorrect'],
+            ['marked', 'Marked'],
+            ['omitted', 'Omitted'],
+            ['correct', 'Correct'],
+          ].map(([value, label]) => (
+            <QuestionModeOption
+              count={modeCounts[value]}
+              key={value}
+              label={label}
+              selected={form.questionMode === value}
+              value={value}
+              onChange={() => setForm((current) => ({
+                ...current,
+                questionMode: value,
+                questionCount: Math.min(Math.max(modeCounts[value], 1), asCount(current.questionCount), 85),
+              }))}
+            />
+          ))}
         </div>
       </fieldset>
 
       <FilterPicker
         label="Subjects"
-        options={statsState.data.subjects}
+        options={statsQuery.data.subjects}
+        getCount={getSubjectCount}
         selected={form.subjects}
-        onSelectAll={() => setForm((current) => ({ ...current, subjects: [] }))}
+        onSelectAll={(selectAll) => setForm((current) => ({ ...current, subjects: selectAll ? statsQuery.data.subjects.map((option) => option.key) : [] }))}
         onToggle={(key) => toggle('subjects', key)}
       />
       <FilterPicker
         label="Systems"
-        options={statsState.data.systems}
+        options={statsQuery.data.systems}
+        getCount={getSystemCount}
         selected={form.systems}
-        onSelectAll={() => setForm((current) => ({ ...current, systems: [] }))}
+        onSelectAll={(selectAll) => setForm((current) => ({ ...current, systems: selectAll ? statsQuery.data.systems.map((option) => option.key) : [] }))}
         onToggle={(key) => toggle('systems', key)}
       />
 
-      <footer className="surface-sticky -mx-4 mt-2 flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-end sm:justify-between md:-mx-8 md:px-8">
-        <label className="form-control flex-row items-center gap-3">
+      <footer className="surface-sticky mt-2 flex flex-col gap-5 border-0 px-6 py-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
+        <label className="form-control !grid grid-cols-[auto_5rem_auto] items-center gap-x-3">
           <span className="label-text whitespace-nowrap font-bold">No. of Questions</span>
           <input
-            className="input input-bordered input-sm w-20 text-center"
+            className="input input-bordered input-sm w-full text-center"
             max={maxQuestions}
             min="1"
             type="number"
             value={form.questionCount}
             onChange={(event) => setForm({ ...form, questionCount: event.target.value })}
           />
-          <span className="text-caption text-muted whitespace-nowrap">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
+          <span className="flex items-baseline gap-1.5 whitespace-nowrap text-caption text-muted">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
         </label>
-        <button className="btn btn-primary min-w-40" disabled={submitting || maxQuestions === 0} type="submit">
-          {submitting ? <span className="loading loading-spinner loading-sm" /> : null}
+        <button className="btn btn-primary min-w-40" disabled={createTestMutation.isPending || maxQuestions === 0 || asCount(form.questionCount) > maxQuestions} type="submit">
+          {createTestMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : null}
           Generate Test
         </button>
       </footer>
@@ -399,57 +542,64 @@ function CreateTestPageContent() {
   )
 }
 
-function QuestionModeOption({ count, label, selected = false }) {
+function QuestionModeOption({ count, label, onChange, selected = false, value }) {
+  const unavailable = count === 0
+
   return (
-    <label className={`label justify-start gap-2 ${selected ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-      <input className="checkbox checkbox-primary checkbox-sm" checked={selected} disabled={!selected} readOnly type="checkbox" />
-      <span className="label-text">{label}</span>
-      <span className="badge badge-outline badge-sm">{count}</span>
+    <label className={`label justify-start gap-2 ${unavailable ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer text-black'}`}>
+      <input className="radio radio-primary radio-sm" name="question-mode" checked={selected} disabled={unavailable} onChange={onChange} type="radio" value={value} />
+      <span className={`label-text ${unavailable ? 'text-gray-400' : 'text-black'}`}>{label}</span>
+      <span className={`badge badge-outline badge-sm ${unavailable ? 'border-gray-300 text-gray-400' : 'text-black'}`}>{count}</span>
     </label>
   )
 }
 
-function FilterPicker({ label, options = [], selected = [], onSelectAll, onToggle }) {
+function FilterPicker({ getCount = (option) => option.totalQuestions, label, options = [], selected = [], onSelectAll, onToggle }) {
+  const allSelected = options.length > 0 && options.every((option) => selected.includes(option.key))
+
   return (
     <fieldset className="border-b border-base-300 pb-6 last:border-0">
       <legend className="text-h6 mb-3">Question {label}</legend>
       <label className="label mb-2 w-fit cursor-pointer justify-start gap-3">
-        <input className="checkbox checkbox-primary checkbox-sm" checked={selected.length === 0} onChange={onSelectAll} type="checkbox" />
-        <span className="label-text font-bold">{label}</span>
-        <span className="badge badge-ghost badge-sm">{selected.length === 0 ? 'All' : selected.length}</span>
+        <input className="checkbox checkbox-primary checkbox-sm" checked={allSelected} onChange={() => onSelectAll(!allSelected)} type="checkbox" />
+        <span className="label-text font-bold text-black">{label}</span>
+        <span className="badge badge-ghost badge-sm">{allSelected ? 'All' : selected.length}</span>
       </label>
       <div className="grid gap-x-12 gap-y-1 pl-0 sm:pl-7 md:grid-cols-2">
-        {options.map((option) => (
-          <label className="label min-w-0 cursor-pointer justify-start gap-3 py-2" key={option.key}>
+        {options.map((option) => {
+          const count = getCount(option)
+          const unavailable = count === 0
+
+          return (
+          <label className={`label min-w-0 justify-start gap-3 py-2 ${unavailable ? 'cursor-not-allowed' : 'cursor-pointer'}`} key={option.key}>
             <input
               className="checkbox checkbox-primary checkbox-sm"
               checked={selected.includes(option.key)}
+              disabled={unavailable}
               type="checkbox"
               onChange={() => onToggle(option.key)}
             />
-            <span className="label-text min-w-0 flex-1 truncate">{option.label}</span>
-            <span className="badge badge-outline badge-sm">{option.totalQuestions}</span>
+            <span className={`label-text min-w-0 flex-1 truncate ${unavailable ? 'text-gray-400' : 'text-black'}`}>{option.label}</span>
+            <span className={`badge badge-outline badge-sm ${unavailable ? 'border-gray-300 text-gray-400' : 'text-black'}`}>{count}</span>
           </label>
-        ))}
+          )
+        })}
       </div>
     </fieldset>
   )
 }
 
 function NotesPageContent() {
-  const [state, setState] = useState({ loading: true, error: '', notes: [] })
+  const queryClient = useQueryClient()
   const [openNotebook, setOpenNotebook] = useState(null)
+  const notesQuery = useQuery({ queryKey: queryKeys.notes(), queryFn: ({ signal }) => listNotes({}, { signal }) })
+  const highlightsQuery = useQuery({ queryKey: queryKeys.highlights(), queryFn: ({ signal }) => listHighlights({}, { signal }) })
+  const createHighlightMutation = useMutation({ mutationFn: createHighlight })
+  const deleteHighlightMutation = useMutation({ mutationFn: deleteHighlight })
+  if (notesQuery.isPending || highlightsQuery.isPending) return <LoadingState />
+  if (notesQuery.isError || highlightsQuery.isError) return <ErrorState message={(notesQuery.error || highlightsQuery.error).message} />
 
-  useEffect(() => {
-    listNotes()
-      .then((payload) => setState({ loading: false, error: '', notes: payload.notes || [] }))
-      .catch((error) => setState({ loading: false, error: error.message, notes: [] }))
-  }, [])
-
-  if (state.loading) return <LoadingState />
-  if (state.error) return <ErrorState message={state.error} />
-
-  const notebooks = Array.from(state.notes.reduce((groups, note) => {
+  const notebooks = Array.from((notesQuery.data?.notes || []).reduce((groups, note) => {
     const key = note.testId || 'unassigned'
     const current = groups.get(key) || { testId: note.testId, notes: [], updatedAt: note.updatedAt }
     current.notes.push(note)
@@ -457,6 +607,19 @@ function NotesPageContent() {
     groups.set(key, current)
     return groups
   }, new Map()).values()).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+  const addNoteHighlight = async (note, selector) => {
+    const payload = await createHighlightMutation.mutateAsync({ testId: note.testId, questionId: note.questionId, selector, color: 'yellow' })
+    queryClient.setQueryData(queryKeys.highlights(), (current) => ({ ...current, highlights: [...(current?.highlights || []), payload.highlight] }))
+    await queryClient.invalidateQueries({ queryKey: ['highlights'] })
+  }
+
+  const removeNoteHighlights = async (highlightIds) => {
+    const ids = [...new Set(highlightIds)].filter(Boolean)
+    await Promise.all(ids.map((highlightId) => deleteHighlightMutation.mutateAsync(highlightId)))
+    queryClient.setQueryData(queryKeys.highlights(), (current) => ({ ...current, highlights: (current?.highlights || []).filter((highlight) => !ids.includes(highlight.id)) }))
+    await queryClient.invalidateQueries({ queryKey: ['highlights'] })
+  }
 
   return (
     <>
@@ -477,7 +640,7 @@ function NotesPageContent() {
           </tbody>
         </table>
       </section>
-      {openNotebook ? <NotebookViewer notes={openNotebook.notes} onClose={() => setOpenNotebook(null)} /> : null}
+      {openNotebook ? <NotebookViewer highlights={highlightsQuery.data?.highlights || []} notes={openNotebook.notes} onAddHighlight={addNoteHighlight} onClose={() => setOpenNotebook(null)} onDeleteHighlight={removeNoteHighlights} /> : null}
     </>
   )
 }
@@ -487,27 +650,21 @@ function HighlightsPageContent() {
 }
 
 function RecordsTable({ kind, loader, remover }) {
-  const [state, setState] = useState({ loading: true, error: '', rows: [] })
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [preview, setPreview] = useState(null)
-
-  const load = useCallback(() => {
-    setState((current) => ({ ...current, loading: true, error: '' }))
-    loader()
-      .then((payload) => setState({ loading: false, error: '', rows: payload[kind] || [] }))
-      .catch((error) => setState({ loading: false, error: error.message, rows: [] }))
-  }, [kind, loader])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const key = kind === 'highlights' ? queryKeys.highlights() : queryKeys.notes()
+  const recordsQuery = useQuery({ queryKey: key, queryFn: ({ signal }) => loader({}, { signal }) })
+  const removeMutation = useMutation({ mutationFn: remover })
 
   const remove = async (id) => {
-    await remover(id)
-    load()
+    await removeMutation.mutateAsync(id)
+    await queryClient.invalidateQueries({ queryKey: key })
   }
 
-  if (state.loading) return <LoadingState />
-  if (state.error) return <ErrorState message={state.error} />
+  if (recordsQuery.isPending) return <LoadingState />
+  if (recordsQuery.isError) return <ErrorState message={recordsQuery.error.message} />
+  const rows = recordsQuery.data?.[kind] || []
 
   return (
     <section className="surface-raised rounded-lg border p-4">
@@ -522,7 +679,7 @@ function RecordsTable({ kind, loader, remover }) {
             </tr>
           </thead>
           <tbody>
-            {state.rows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id}>
                 <td>QID {row.question?.questionId || row.questionId}</td>
                 <td>
@@ -539,10 +696,13 @@ function RecordsTable({ kind, loader, remover }) {
                       type="button"
                       disabled={!row.question}
                       title="Preview question"
-                      onClick={() => setPreview({
-                        question: row.question,
-                        highlightText: kind === 'highlights' ? row.selector?.exact : '',
-                      })}
+                      onClick={() => {
+                        if (kind === 'highlights') {
+                          navigate(`/highlights/${row.id}/review`, { state: { highlight: row } })
+                          return
+                        }
+                        setPreview({ question: row.question, highlights: [] })
+                      }}
                     >
                       <span className="material-symbols-outlined">visibility</span>
                       Preview
@@ -555,7 +715,7 @@ function RecordsTable({ kind, loader, remover }) {
                 </td>
               </tr>
             ))}
-            {state.rows.length === 0 ? (
+            {rows.length === 0 ? (
               <tr>
                 <td colSpan="4">No {kind} saved yet.</td>
               </tr>
@@ -563,54 +723,34 @@ function RecordsTable({ kind, loader, remover }) {
           </tbody>
         </table>
       </div>
-      {preview ? <QuestionPreviewModal highlightText={preview.highlightText} question={preview.question} onClose={() => setPreview(null)} /> : null}
+      {preview ? <QuestionReviewModal initialHighlights={preview.highlights} question={preview.question} onClose={() => setPreview(null)} /> : null}
     </section>
   )
 }
 
 function FeedbackThreadModal({ onClose, onUpdated, threadId }) {
-  const [state, setState] = useState({ loading: true, error: '', data: null })
+  const queryClient = useQueryClient()
   const [reply, setReply] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    let active = true
-
-    getFeedback(threadId)
-      .then((payload) => {
-        if (active) setState({ loading: false, error: '', data: payload })
-      })
-      .catch((error) => {
-        if (active) setState({ loading: false, error: error.message, data: null })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [threadId])
+  const detailKey = queryKeys.feedbackDetail(threadId)
+  const detailQuery = useQuery({ queryKey: detailKey, queryFn: ({ signal }) => getFeedback(threadId, { signal }) })
+  const replyMutation = useMutation({ mutationFn: (message) => replyFeedback(threadId, message) })
 
   const submitReply = async (event) => {
     event.preventDefault()
     const message = reply.trim()
     if (!message) return
 
-    setSubmitting(true)
-    setState((current) => ({ ...current, error: '' }))
-
     try {
-      const payload = await replyFeedback(threadId, message)
-      setState({ loading: false, error: '', data: payload })
+      const payload = await replyMutation.mutateAsync(message)
+      queryClient.setQueryData(detailKey, payload)
       setReply('')
       if (payload.thread) onUpdated(payload.thread)
-    } catch (error) {
-      setState((current) => ({ ...current, error: error.message }))
-    } finally {
-      setSubmitting(false)
-    }
+    } catch { /* surfaced by the mutation below */ }
   }
 
-  const thread = state.data?.thread
-  const messages = state.data?.messages || []
+  const thread = detailQuery.data?.thread
+  const messages = detailQuery.data?.messages || []
+  const error = detailQuery.error || replyMutation.error
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-neutral/60 p-3 sm:p-4">
@@ -632,9 +772,9 @@ function FeedbackThreadModal({ onClose, onUpdated, threadId }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          {state.loading ? <LoadingState /> : null}
-          {state.error ? <ErrorState message={state.error} /> : null}
-          {!state.loading && !state.error ? (
+          {detailQuery.isPending ? <LoadingState /> : null}
+          {error ? <ErrorState message={error.message} /> : null}
+          {!detailQuery.isPending && !error ? (
             <div className="grid gap-4">
               {messages.map((message) => {
                 const fromUser = message.senderType === 'user'
@@ -657,15 +797,15 @@ function FeedbackThreadModal({ onClose, onUpdated, threadId }) {
         <form className="grid gap-3 border-t border-base-300 p-4" onSubmit={submitReply}>
           <textarea
             className="textarea textarea-bordered min-h-28"
-            disabled={state.loading || submitting || thread?.status === 'closed'}
+            disabled={detailQuery.isPending || replyMutation.isPending || thread?.status === 'closed'}
             placeholder={thread?.status === 'closed' ? 'This thread is closed.' : 'Write a reply'}
             value={reply}
             onChange={(event) => setReply(event.target.value)}
           />
           <div className="flex justify-end gap-2">
             <button className="btn btn-ghost" type="button" onClick={onClose}>Close</button>
-            <button className="btn btn-primary" disabled={state.loading || submitting || !reply.trim() || thread?.status === 'closed'} type="submit">
-              {submitting ? <span className="loading loading-spinner loading-sm" /> : null}
+            <button className="btn btn-primary" disabled={detailQuery.isPending || replyMutation.isPending || !reply.trim() || thread?.status === 'closed'} type="submit">
+              {replyMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : null}
               Send Reply
             </button>
           </div>
@@ -676,23 +816,15 @@ function FeedbackThreadModal({ onClose, onUpdated, threadId }) {
 }
 
 function FeedbackPageContent() {
-  const [state, setState] = useState({ loading: true, error: '', rows: [] })
+  const queryClient = useQueryClient()
   const [previewQuestion, setPreviewQuestion] = useState(null)
   const [openThreadId, setOpenThreadId] = useState(null)
-
-  useEffect(() => {
-    listFeedback()
-      .then((payload) => setState({ loading: false, error: '', rows: payload.feedback || [] }))
-      .catch((error) => setState({ loading: false, error: error.message, rows: [] }))
-  }, [])
-
-  if (state.loading) return <LoadingState />
+  const feedbackQuery = useQuery({ queryKey: queryKeys.feedback, queryFn: listFeedback })
+  if (feedbackQuery.isPending) return <LoadingState />
+  const rows = feedbackQuery.data?.feedback || []
 
   const updateThreadRow = (thread) => {
-    setState((current) => ({
-      ...current,
-      rows: current.rows.map((row) => (row.id === thread.id ? { ...row, ...thread } : row)),
-    }))
+    queryClient.setQueryData(queryKeys.feedback, (current) => ({ ...current, feedback: (current?.feedback || []).map((row) => (row.id === thread.id ? { ...row, ...thread } : row)) }))
   }
 
   return (
@@ -702,7 +834,7 @@ function FeedbackPageContent() {
           <h2 className="text-h3">Feedback Threads</h2>
           <p className="text-caption text-muted">Question feedback is submitted from the exam window.</p>
         </div>
-        {state.error ? <ErrorState message={state.error} /> : null}
+        {feedbackQuery.isError ? <ErrorState message={feedbackQuery.error.message} /> : null}
         <div className="overflow-x-auto">
           <table className="table">
             <thead>
@@ -715,7 +847,7 @@ function FeedbackPageContent() {
               </tr>
             </thead>
             <tbody>
-              {state.rows.map((thread) => (
+              {rows.map((thread) => (
                 <tr key={thread.id}>
                   <td>{thread.subject}</td>
                   <td><span className="badge badge-outline">{thread.status}</span></td>
@@ -741,7 +873,7 @@ function FeedbackPageContent() {
                   </td>
                 </tr>
               ))}
-              {state.rows.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr>
                   <td colSpan="5">No feedback threads yet.</td>
                 </tr>
@@ -757,25 +889,18 @@ function FeedbackPageContent() {
           onUpdated={updateThreadRow}
         />
       ) : null}
-      {previewQuestion ? <QuestionPreviewModal question={previewQuestion} onClose={() => setPreviewQuestion(null)} /> : null}
+      {previewQuestion ? <QuestionReviewModal question={previewQuestion} onClose={() => setPreviewQuestion(null)} /> : null}
     </div>
   )
 }
 
 function TestsPageContent() {
-  const [state, setState] = useState({ loading: true, error: '', tests: [] })
-
-  useEffect(() => {
-    listTests()
-      .then((data) => setState({ loading: false, error: '', tests: data.tests || [] }))
-      .catch((error) => setState({ loading: false, error: error.message, tests: [] }))
-  }, [])
-
-  if (state.loading) return <LoadingState />
-  if (state.error) return <ErrorState message={state.error} />
-
-  const incomplete = state.tests.filter((test) => test.status !== 'completed')
-  const completed = state.tests.filter((test) => test.status === 'completed')
+  const testsQuery = useQuery({ queryKey: queryKeys.tests, queryFn: listTests })
+  if (testsQuery.isPending) return <LoadingState />
+  if (testsQuery.isError) return <ErrorState message={testsQuery.error.message} />
+  const tests = testsQuery.data?.tests || []
+  const incomplete = tests.filter((test) => test.status !== 'completed')
+  const completed = tests.filter((test) => test.status === 'completed')
 
   return (
     <div className="grid gap-10">
@@ -799,28 +924,96 @@ function TestsPageContent() {
   )
 }
 
-function TestScoreRing({ value }) {
-  const percentage = Math.min(100, Math.max(0, asCount(value)))
+function TestPerformanceTooltip({ scoreSummary, total }) {
+  const totalQuestions = Math.max(0, asCount(total))
+  const correct = asCount(scoreSummary?.correct)
+  const incorrect = asCount(scoreSummary?.incorrect)
+  const omitted = asCount(scoreSummary?.unanswered)
+  const used = Math.min(totalQuestions, asCount(scoreSummary?.total))
+  const percent = (value) => totalQuestions > 0 ? Math.round((value / totalQuestions) * 100) : 0
+  const rows = [
+    { label: 'Unused Questions', value: percent(Math.max(totalQuestions - used, 0)), color: '#94a3b8' },
+    { label: 'Correct', value: percent(correct), color: '#10b981' },
+    { label: 'Incorrect', value: percent(incorrect), color: '#ef4444' },
+    { label: 'Partially Incorrect', value: 0, color: '#f59e0b' },
+    { label: 'Omitted', value: percent(omitted), color: '#475569' },
+    { label: 'Used Questions', value: percent(used), color: '#3b82f6' },
+  ]
+  const radii = [43, 36, 29, 22, 15, 8]
 
   return (
-    <div className="relative size-[58px]">
-      <svg className="size-full -rotate-90 drop-shadow-sm" role="img" viewBox="0 0 58 58" aria-label={`${percentage}% scored`}>
-        <circle className="text-base-200" cx="29" cy="29" fill="none" r="25" stroke="currentColor" strokeWidth="6" />
-        <circle
-          className="circular-progress-trace text-success"
-          cx="29"
-          cy="29"
-          fill="none"
-          pathLength="100"
-          r="25"
-          stroke="currentColor"
-          strokeDasharray="100"
-          strokeLinecap="round"
-          strokeWidth="6"
-          style={{ '--progress-offset': 100 - percentage }}
-        />
+    <div className="pointer-events-none invisible absolute bottom-[calc(100%+14px)] left-0 z-50 flex w-[360px] translate-y-1.5 scale-95 items-center gap-6 rounded-3xl border border-white/90 bg-white/80 p-6 opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:visible group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100">
+      <svg className="size-[110px] shrink-0 -rotate-90 overflow-visible" aria-hidden="true" viewBox="0 0 100 100">
+        {rows.map((row, index) => (
+          <circle
+            className="circular-progress-trace"
+            cx="50"
+            cy="50"
+            fill="none"
+            key={row.label}
+            pathLength="100"
+            r={radii[index]}
+            stroke={row.color}
+            strokeDasharray="100"
+            strokeLinecap="round"
+            strokeWidth="3.5"
+            style={{ '--progress-offset': 100 - row.value, '--trace-delay': `${index * PERFORMANCE_RING_DELAY}ms` }}
+          />
+        ))}
       </svg>
-      <span className="absolute inset-0 grid place-items-center text-xs font-bold text-base-content">{percentage}%</span>
+      <div className="min-w-0 flex-1">
+        <h3 className="mb-2 text-sm font-bold text-slate-900">Performance Overview</h3>
+        <dl className="grid gap-1.5">
+          {rows.map((row, index) => (
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-600" key={row.label}>
+              <dt>{row.label}</dt>
+              <dd className="min-w-8 rounded-full px-2 py-0.5 text-center text-[11px] font-bold text-white" style={{ backgroundColor: row.color }}><AnimatedNumber delay={index * PERFORMANCE_RING_DELAY} value={row.value} />%</dd>
+            </div>
+          ))}
+          <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 text-xs font-bold text-slate-900">
+            <dt>Total Questions</dt>
+            <dd className="min-w-8 rounded-full bg-slate-900 px-2 py-0.5 text-center text-[11px] text-white"><AnimatedNumber delay={rows.length * PERFORMANCE_RING_DELAY} value={totalQuestions} /></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  )
+}
+
+function TestScoreRing({ scoreSummary, total, value }) {
+  const percentage = Math.min(100, Math.max(0, asCount(value)))
+  const [animationKey, setAnimationKey] = useState(0)
+
+  const replayDetailsAnimation = () => setAnimationKey((key) => key + 1)
+
+  return (
+    <div
+      className="group relative size-[58px] cursor-pointer overflow-visible outline-none"
+      tabIndex="0"
+      aria-label={`${percentage}% scored. Hover or focus for performance overview.`}
+      onFocus={replayDetailsAnimation}
+      onMouseEnter={replayDetailsAnimation}
+    >
+      <div className="relative z-10 size-[58px] origin-center transition-transform duration-300 ease-out group-hover:scale-[1.6] group-focus-visible:scale-[1.6]">
+        <svg className="size-full -rotate-90 drop-shadow-sm" role="img" viewBox="0 0 58 58" aria-label={`${percentage}% scored`}>
+          <circle className="text-base-200" cx="29" cy="29" fill="none" r="25" stroke="currentColor" strokeWidth="6" />
+          <circle
+            className="circular-progress-trace text-success"
+            cx="29"
+            cy="29"
+            fill="none"
+            pathLength="100"
+            r="25"
+            stroke="currentColor"
+            strokeDasharray="100"
+            strokeLinecap="round"
+            strokeWidth="6"
+            style={{ '--progress-offset': 100 - percentage }}
+          />
+        </svg>
+        <span className="absolute inset-0 grid place-items-center text-xs font-bold text-base-content"><AnimatedNumber value={percentage} />%</span>
+      </div>
+      <TestPerformanceTooltip key={animationKey} scoreSummary={scoreSummary} total={total} />
     </div>
   )
 }
@@ -831,7 +1024,7 @@ function TestsTable({ emptyMessage, tests, title, variant }) {
   return (
     <section className="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
       <h2 className="mb-6 text-xl font-bold text-base-content">{title}</h2>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto lg:overflow-visible">
         <table className="table min-w-[1050px]">
           <thead>
             <tr className="border-base-300 text-xs uppercase text-base-content/75">
@@ -852,7 +1045,7 @@ function TestsTable({ emptyMessage, tests, title, variant }) {
 
               return (
               <tr className="border-base-300 text-sm text-base-content" key={test.id}>
-                <td className="py-5"><TestScoreRing value={score} /></td>
+                <td className="py-5"><TestScoreRing scoreSummary={test.scoreSummary} total={max} value={score} /></td>
                 <td>{test.questionCount}</td>
                 <td>{correct}/{max}</td>
                 <td>{new Date(test.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
@@ -918,18 +1111,81 @@ function WorkspacePlanCard({ plan, currentPlan }) {
   )
 }
 
-function PricingPageContent({ currentPlan }) {
+function PricingPageContent({ currentPlan, pricingContent }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {pricing.plans.map((plan) => (
+      {pricingContent.plans.map((plan) => (
         <WorkspacePlanCard currentPlan={currentPlan} key={plan.key} plan={plan} />
       ))}
     </div>
   )
 }
 
-function PaymentPageContent() {
-  const plusPlan = pricing.plans.find((plan) => plan.key === 'plus')
+function PaymentPageContent({ onPaymentComplete, pricingContent }) {
+  const plusPlan = pricingContent.plans.find((plan) => plan.key === 'plus')
+  const [checkoutState, setCheckoutState] = useState({ status: 'idle', message: '' })
+  const queryClient = useQueryClient()
+  const createOrderMutation = useMutation({ mutationFn: () => apiRequest('/payments/create-order', { method: 'POST', body: { plan: 'plus' } }) })
+  const verifyPaymentMutation = useMutation({ mutationFn: (payment) => apiRequest('/payments/verify-payment', { method: 'POST', body: payment }) })
+
+  const startCheckout = async () => {
+    if (!window.Razorpay) {
+      setCheckoutState({ status: 'error', message: 'Payment checkout could not be loaded. Please refresh and try again.' })
+      return
+    }
+
+    const key = import.meta.env.VITE_RAZORPAY_KEY_ID
+    if (!key) {
+      setCheckoutState({ status: 'error', message: 'Payment checkout is not configured.' })
+      return
+    }
+
+    setCheckoutState({ status: 'loading', message: '' })
+
+    try {
+      const order = await createOrderMutation.mutateAsync()
+
+      const checkout = new window.Razorpay({
+        key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'PBX Nursing',
+        description: `${plusPlan.name} — ${plusPlan.cadence}`,
+        order_id: order.order_id,
+        handler: async (payment) => {
+          setCheckoutState({ status: 'verifying', message: '' })
+
+          try {
+            await verifyPaymentMutation.mutateAsync(payment)
+            await onPaymentComplete()
+            await queryClient.invalidateQueries({ queryKey: queryKeys.payments })
+            setCheckoutState({ status: 'success', message: 'Payment verified successfully. Your transaction is complete.' })
+          } catch (error) {
+            setCheckoutState({ status: 'error', message: getApiErrorMessage(error) })
+          }
+        },
+        theme: { color: '#4f46e5' },
+        modal: {
+          ondismiss: () => {
+            setCheckoutState((current) => ['success', 'verifying'].includes(current.status)
+              ? current
+              : { status: 'cancelled', message: 'Checkout was cancelled. No payment was completed.' })
+          },
+        },
+      })
+
+      checkout.on('payment.failed', (response) => {
+        setCheckoutState({
+          status: 'error',
+          message: response.error?.description || 'Payment failed. Please try again.',
+        })
+      })
+      checkout.open()
+      setCheckoutState({ status: 'open', message: '' })
+    } catch (error) {
+      setCheckoutState({ status: 'error', message: getApiErrorMessage(error) })
+    }
+  }
 
   return (
     <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -951,15 +1207,37 @@ function PaymentPageContent() {
           <p className="text-kicker">Checkout</p>
           <h2 className="text-2xl font-black">{plusPlan.price}</h2>
           <p className="text-body text-muted">{plusPlan.cadence}</p>
-          <button className="btn btn-primary" type="button">Buy Plus</button>
+          <button
+            className="btn btn-primary"
+            disabled={checkoutState.status === 'loading' || checkoutState.status === 'verifying'}
+            onClick={startCheckout}
+            type="button"
+          >
+            {checkoutState.status === 'loading' ? 'Preparing checkout…' : checkoutState.status === 'verifying' ? 'Verifying payment…' : 'Buy Plus'}
+          </button>
+          {checkoutState.message ? (
+            <div className={`alert ${checkoutState.status === 'success' ? 'alert-success' : checkoutState.status === 'cancelled' ? 'alert-warning' : 'alert-error'}`} role="status">
+              <span>{checkoutState.message}</span>
+            </div>
+          ) : null}
         </div>
       </article>
     </section>
   )
 }
 
-function ProfilePageContent({ currentPlan, onLogout, user }) {
+function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProfile, user }) {
   const navigate = useNavigate()
+  const greeting = useTimeGreeting()
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [profileStatus, setProfileStatus] = useState(null)
+  const [profileValues, setProfileValues] = useState({ name: user.name || '', phone: user.phone || '' })
+  const [passwordValues, setPasswordValues] = useState({ password: '', confirmPassword: '' })
+  const [passwordStatus, setPasswordStatus] = useState(null)
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
+  const paymentsQuery = useQuery({ queryKey: queryKeys.payments, queryFn: getPaymentHistory })
+  const payments = paymentsQuery.data?.payments || []
   const initial = user.name?.[0]?.toUpperCase() || 'U'
   const profileRows = [
     { icon: 'badge', label: 'Name', value: user.name },
@@ -970,13 +1248,56 @@ function ProfilePageContent({ currentPlan, onLogout, user }) {
     await onLogout()
     navigate('/login', { replace: true })
   }
+  const saveProfile = async (event) => {
+    event.preventDefault()
+    setProfileStatus(null)
+    if (profileValues.name.trim().length < 2) {
+      setProfileStatus({ type: 'error', message: 'Enter at least 2 characters for your name.' })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await onUpdateProfile({ name: profileValues.name.trim(), phone: profileValues.phone.trim() })
+      setProfileValues({ name: result.user.name, phone: result.user.phone || '' })
+      setProfileStatus({ type: 'success', message: result.message })
+      setIsEditing(false)
+    } catch (error) {
+      setProfileStatus({ type: 'error', message: getApiErrorMessage(error) })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+  const savePassword = async (event) => {
+    event.preventDefault()
+    setPasswordStatus(null)
+    if (passwordValues.password.length < 8 || !/[A-Za-z]/.test(passwordValues.password) || !/\d/.test(passwordValues.password)) {
+      setPasswordStatus({ type: 'error', message: 'Use at least 8 characters with a letter and number.' })
+      return
+    }
+    if (passwordValues.password !== passwordValues.confirmPassword) {
+      setPasswordStatus({ type: 'error', message: 'Passwords must match.' })
+      return
+    }
+
+    setIsSavingPassword(true)
+    try {
+      const result = await onSetPassword(passwordValues)
+      setPasswordValues({ password: '', confirmPassword: '' })
+      setPasswordStatus({ type: 'success', message: result.message })
+    } catch (error) {
+      setPasswordStatus({ type: 'error', message: getApiErrorMessage(error) })
+    } finally {
+      setIsSavingPassword(false)
+    }
+  }
 
   return (
     <div className="grid gap-8">
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
         <div className="flex items-center gap-4">
           <div className="avatar avatar-placeholder"><div className="w-12 rounded-full bg-secondary/15 text-secondary"><span className="font-bold">{initial}</span></div></div>
-          <div><h1 className="text-xl font-bold">Good Morning, {user.name}</h1><p className="text-sm text-base-content/60">Manage your account and membership details</p></div>
+          <div><h1 className="text-xl font-bold">{greeting}, {user.name}</h1><p className="text-sm text-base-content/60">Manage your account and membership details</p></div>
         </div>
         <div className="flex gap-3">
           <button className="btn btn-error h-[42px]" type="button" onClick={logout}><span className="material-symbols-outlined">logout</span>Log out</button>
@@ -984,9 +1305,31 @@ function ProfilePageContent({ currentPlan, onLogout, user }) {
         </div>
       </section>
 
+      {!user.hasPassword ? (
+        <section className="rounded-2xl border border-warning/50 bg-warning/10 px-6 py-6 md:px-8">
+          <div className="mb-5 flex items-start gap-3"><span className="material-symbols-outlined text-warning">key</span><div><h2 className="font-bold">Set your password</h2><p className="text-sm text-base-content/70">Add a password once to enable standard email and password login. Until then, you can only sign in with Google.</p></div></div>
+          {passwordStatus ? <div className={`alert mb-4 text-sm ${passwordStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} role="status"><span>{passwordStatus.message}</span></div> : null}
+          <form className="grid max-w-xl gap-4" onSubmit={savePassword}>
+            <label className="grid gap-1"><span className="label-text">Password</span><input className="input input-bordered w-full" type="password" autoComplete="new-password" value={passwordValues.password} onChange={(event) => setPasswordValues((current) => ({ ...current, password: event.target.value }))} disabled={isSavingPassword} required /></label>
+            <label className="grid gap-1"><span className="label-text">Confirm password</span><input className="input input-bordered w-full" type="password" autoComplete="new-password" value={passwordValues.confirmPassword} onChange={(event) => setPasswordValues((current) => ({ ...current, confirmPassword: event.target.value }))} disabled={isSavingPassword} required /></label>
+            <div><button className="btn btn-primary" type="submit" disabled={isSavingPassword}>{isSavingPassword ? <span className="loading loading-spinner loading-xs" /> : null}Set password</button></div>
+          </form>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
-        <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">person</span><div><h2 className="font-bold text-base-content">Profile</h2><p className="text-sm text-base-content/60">Personal details</p></div></div>
-        {profileRows.map((row) => (
+        <div className="mb-5 flex items-start justify-between gap-3 text-primary">
+          <div className="flex items-start gap-3"><span className="material-symbols-outlined">person</span><div><h2 className="font-bold text-base-content">Profile</h2><p className="text-sm text-base-content/60">Personal details</p></div></div>
+          <button className="btn btn-outline btn-sm" type="button" disabled={isSaving} onClick={() => { setIsEditing((value) => !value); setProfileStatus(null); setProfileValues({ name: user.name || '', phone: user.phone || '' }) }}>{isEditing ? 'Cancel' : 'Edit profile'}</button>
+        </div>
+        {profileStatus ? <div className={`alert mb-4 text-sm ${profileStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} role="status"><span>{profileStatus.message}</span></div> : null}
+        {isEditing ? (
+          <form className="grid gap-4" onSubmit={saveProfile}>
+            <label className="grid gap-1"><span className="label-text">Name</span><input className="input input-bordered w-full" value={profileValues.name} maxLength={100} onChange={(event) => setProfileValues((current) => ({ ...current, name: event.target.value }))} disabled={isSaving} required /></label>
+            <label className="grid gap-1"><span className="label-text">Contact number</span><input className="input input-bordered w-full" type="tel" inputMode="tel" value={profileValues.phone} maxLength={20} placeholder="e.g. +91 98765 43210" onChange={(event) => setProfileValues((current) => ({ ...current, phone: event.target.value }))} disabled={isSaving} /></label>
+            <div><button className="btn btn-primary" type="submit" disabled={isSaving}>{isSaving ? <span className="loading loading-spinner loading-xs" /> : null}Save changes</button></div>
+          </form>
+        ) : profileRows.map((row) => (
           <div className="flex min-h-[70px] flex-wrap items-center justify-between gap-4 border-b border-base-200 last:border-0" key={row.label}>
             <div className="flex items-center gap-4 text-base-content/80"><span className="material-symbols-outlined text-base-content/55">{row.icon}</span><span>{row.label}</span></div>
             <strong className="text-sm">{row.value}</strong>
@@ -997,16 +1340,17 @@ function ProfilePageContent({ currentPlan, onLogout, user }) {
       <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
         <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">card_membership</span><div><h2 className="font-bold text-base-content">Membership</h2><p className="text-sm text-base-content/60">View and manage your membership plan</p></div></div>
         <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-base-200 p-5">
-          <div><div className="flex items-center gap-3"><strong>Plan - {currentPlan === 'plus' ? 'Plus' : 'Free'}</strong><span className="badge badge-success badge-sm">Active</span></div><p className="mt-1 text-sm text-base-content/60">Your current PBX Nursing membership</p></div>
-          <div className="flex flex-wrap items-center gap-8"><div className="text-right"><p className="text-xs font-bold uppercase text-base-content/60">Payment history</p><p className="text-sm text-base-content/80">View your subscription and billing options</p></div><Link className="btn btn-primary h-[42px] w-[140px]" to="/pricing">{currentPlan === 'plus' ? 'Renew Plan' : 'Upgrade'}</Link></div>
+          <div><div className="flex items-center gap-3"><strong>Plan - {currentPlan === 'plus' ? 'Plus' : 'Free'}</strong><span className={`badge badge-sm ${currentPlan === 'plus' ? 'badge-success' : 'badge-outline'}`}>{currentPlan === 'plus' ? 'Active' : 'Free'}</span></div><p className="mt-1 text-sm text-base-content/60">{getMembershipLabel(user)}{user.subscriptionExpiresAt ? ` · expires ${new Date(user.subscriptionExpiresAt).toLocaleDateString()}` : ''}</p></div>
+          <Link className="btn btn-primary h-[42px] w-[140px]" to="/pricing">{currentPlan === 'plus' ? 'Renew Plan' : 'Upgrade'}</Link>
         </div>
+        <div className="mt-5"><h3 className="text-xs font-bold uppercase text-base-content/60">Payment history</h3>{payments.length ? <ul className="mt-2 divide-y divide-base-200">{payments.map((payment) => <li className="flex flex-wrap justify-between gap-2 py-3 text-sm" key={payment.id}><span>{payment.plan === 'plus' ? 'PBX Nursing Plus' : payment.plan}</span><span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: payment.currency }).format(payment.amount / 100)} · {payment.status} · {new Date(payment.paidAt || payment.createdAt).toLocaleDateString()}</span></li>)}</ul> : <p className="mt-2 text-sm text-base-content/60">No payments yet.</p>}</div>
       </section>
 
     </div>
   )
 }
 
-function PageBody({ page, currentPlan, onLogout, user }) {
+function PageBody({ page, currentPlan, onLogout, onPaymentComplete, onSetPassword, onUpdateProfile, pricingContent, user }) {
   if (page === 'dashboard') return <DashboardPageContent user={user} />
   if (page === 'performance') return <PerformancePageContent />
   if (page === 'createTest') return <CreateTestPageContent />
@@ -1014,23 +1358,27 @@ function PageBody({ page, currentPlan, onLogout, user }) {
   if (page === 'feedback') return <FeedbackPageContent />
   if (page === 'highlights') return <HighlightsPageContent />
   if (page === 'notes') return <NotesPageContent />
-  if (page === 'pricing') return <PricingPageContent currentPlan={currentPlan} />
-  if (page === 'payment') return <PaymentPageContent />
-  if (page === 'profile') return <ProfilePageContent currentPlan={currentPlan} onLogout={onLogout} user={user} />
+  if (page === 'pricing') return <PricingPageContent currentPlan={currentPlan} pricingContent={pricingContent} />
+  if (page === 'payment') return <PaymentPageContent onPaymentComplete={onPaymentComplete} pricingContent={pricingContent} />
+  if (page === 'profile') return <ProfilePageContent currentPlan={currentPlan} onLogout={onLogout} onSetPassword={onSetPassword} onUpdateProfile={onUpdateProfile} user={user} />
 
   return <DashboardPageContent user={user} />
 }
 
 function HomePage({ page = 'dashboard' }) {
   const auth = useAuth()
+  const navigate = useNavigate()
   const content = getPageContent(page)
   const user = auth.user || { name: 'PBX learner', email: '' }
   const currentPlan = getUserPlan(user)
+  const pricingContent = usePlanCatalog()
 
   return (
-    <DrawerShell
+    <>
+      <DrawerShell
       account={(
         <AccountPanel
+          membershipLabel={getMembershipLabel(user)}
           name={user.name}
         />
       )}
@@ -1044,12 +1392,34 @@ function HomePage({ page = 'dashboard' }) {
       )}
       brand={brand}
       drawerId="home-drawer"
+      mainClassName={page === 'createTest' ? 'bg-white' : 'bg-base-200'}
       navGroups={navGroups}
       title={content.title}
       user={user}
     >
-      <PageBody currentPlan={currentPlan} onLogout={auth.logout} page={page} user={user} />
-    </DrawerShell>
+      <PageBody currentPlan={currentPlan} onLogout={auth.logout} onPaymentComplete={auth.refreshUser} onSetPassword={auth.setPassword} onUpdateProfile={auth.updateProfile} page={page} pricingContent={pricingContent} user={user} />
+      </DrawerShell>
+      {auth.shouldPromptForPassword && page !== 'profile' ? (
+        <Modal title="Set a password?" onClose={auth.dismissPasswordPrompt}>
+          <p className="text-base-content/70">
+            Add a password if you would also like to sign in with your email address. You can skip this and continue using your current sign-in method.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button className="btn btn-ghost" type="button" onClick={auth.dismissPasswordPrompt}>Not now</button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => {
+                auth.dismissPasswordPrompt()
+                navigate('/profile')
+              }}
+            >
+              Set password
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+    </>
   )
 }
 

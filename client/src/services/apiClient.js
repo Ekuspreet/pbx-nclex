@@ -1,4 +1,5 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/$/, '')
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
+const REQUEST_TIMEOUT_MS = 30_000
 
 let refreshPromise = null
 
@@ -25,6 +26,11 @@ async function parseResponse(response) {
 }
 
 async function rawRequest(path, options = {}) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS)
+  const signal = options.signal
+    ? AbortSignal.any([controller.signal, options.signal])
+    : controller.signal
   const headers = {
     Accept: 'application/json',
     ...options.headers,
@@ -34,6 +40,7 @@ async function rawRequest(path, options = {}) {
     method: options.method || 'GET',
     credentials: 'include',
     headers,
+    signal,
   }
 
   if (options.body !== undefined) {
@@ -41,7 +48,19 @@ async function rawRequest(path, options = {}) {
     config.body = JSON.stringify(options.body)
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, config)
+  let response
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, config)
+  } catch (error) {
+    if (error.name === 'AbortError' && controller.signal.aborted && !options.signal?.aborted) {
+      throw new Error('The request timed out. Please try again.')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+
   const payload = await parseResponse(response)
 
   if (!response.ok) {

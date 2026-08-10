@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { brand } from '../content/landing/index.js'
 import { apiRequest } from '../services/apiClient.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
-import ExamQuestionPreviewModal from '../ui/questionnaire/ExamQuestionPreviewModal.jsx'
-
-export const ADMIN_ROUTE = '/admin/f6bf13fb-5774-43e7-aef4-57bb4298967f'
+import QuestionReviewModal from '../ui/questionnaire/QuestionReviewModal.jsx'
+import { ADMIN_ROUTE } from './adminRoute.js'
+import { queryKeys } from '../services/queryKeys.js'
 
 function adminRequest(path, options = {}) {
   return apiRequest(path, {
@@ -23,28 +24,25 @@ function LoadingPage() {
 }
 
 function useAdminSession() {
-  const [admin, setAdmin] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    adminRequest('/admin/me')
-      .then((payload) => setAdmin(payload.admin))
-      .catch(() => setAdmin(null))
-      .finally(() => setLoading(false))
-  }, [])
+  const queryClient = useQueryClient()
+  const sessionQuery = useQuery({ queryKey: queryKeys.adminSession, queryFn: ({ signal }) => adminRequest('/admin/me', { signal }), retry: false })
+  const loginMutation = useMutation({ mutationFn: (values) => adminRequest('/admin/auth/login', { method: 'POST', body: values }) })
+  const logoutMutation = useMutation({ mutationFn: () => adminRequest('/admin/auth/logout', { method: 'POST' }) })
+  const admin = sessionQuery.data?.admin || null
+  const loading = sessionQuery.isPending
 
   return useMemo(() => ({
     admin,
     loading,
     async login(values) {
-      const payload = await adminRequest('/admin/auth/login', { method: 'POST', body: values })
-      setAdmin(payload.admin)
+      const payload = await loginMutation.mutateAsync(values)
+      queryClient.setQueryData(queryKeys.adminSession, payload)
     },
     async logout() {
-      await adminRequest('/admin/auth/logout', { method: 'POST' })
-      setAdmin(null)
+      await logoutMutation.mutateAsync()
+      queryClient.removeQueries({ queryKey: ['admin'] })
     },
-  }), [admin, loading])
+  }), [admin, loading, loginMutation, logoutMutation, queryClient])
 }
 
 const AdminContext = React.createContext(null)
@@ -201,14 +199,15 @@ function PaginationControls({ loading, pagination, rowCount, onLimitChange, onNe
 }
 
 function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPlaceholder, title }) {
-  const [state, setState] = useState({ loading: true, error: '', pagination: null, rows: [] })
   const [pageRequest, setPageRequest] = useState({ limit: 50, offset: 0 })
   const [searchDraft, setSearchDraft] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [previewQuestion, setPreviewQuestion] = useState(null)
 
-  useEffect(() => {
-    let active = true
+  const params = { ...pageRequest, q: searchQuery || undefined }
+  const dataQuery = useQuery({
+    queryKey: queryKeys.adminResource(endpoint, params),
+    queryFn: ({ signal }) => {
     const search = new URLSearchParams({
       limit: String(pageRequest.limit),
       offset: String(pageRequest.offset),
@@ -218,27 +217,13 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
       search.set('q', searchQuery)
     }
 
-    setState((current) => ({ ...current, loading: true, error: '' }))
-
-    adminRequest(`${endpoint}?${search}`)
-      .then((payload) => {
-        if (!active) return
-        const key = getEndpointKey(endpoint)
-        setState({
-          loading: false,
-          error: '',
-          pagination: payload.pagination || null,
-          rows: payload[key] || [],
-        })
-      })
-      .catch((error) => {
-        if (active) setState({ loading: false, error: error.message, pagination: null, rows: [] })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [endpoint, pageRequest.limit, pageRequest.offset, searchQuery])
+      return adminRequest(`${endpoint}?${search}`, { signal })
+    },
+    placeholderData: (previousData) => previousData,
+  })
+  const key = getEndpointKey(endpoint)
+  const pagination = dataQuery.data?.pagination || null
+  const rows = dataQuery.data?.[key] || []
 
   const submitSearch = (event) => {
     event.preventDefault()
@@ -272,9 +257,9 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
 
   return (
     <Layout title={title}>
-      {state.loading ? <InlineLoading /> : null}
-      {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
-      {!state.loading && !state.error ? (
+      {dataQuery.isPending ? <InlineLoading /> : null}
+      {dataQuery.isError ? <div className="alert alert-error"><span>{dataQuery.error.message}</span></div> : null}
+      {!dataQuery.isPending && !dataQuery.isError ? (
         <section className="surface-raised rounded-lg border p-4">
           {searchLabel ? (
             <form className="mb-4 flex flex-wrap items-end gap-2" onSubmit={submitSearch}>
@@ -288,12 +273,12 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
                   onChange={(event) => setSearchDraft(event.target.value)}
                 />
               </label>
-              <button className="btn btn-primary btn-sm" disabled={state.loading} type="submit">
+              <button className="btn btn-primary btn-sm" disabled={dataQuery.isFetching} type="submit">
                 <span className="material-symbols-outlined">search</span>
                 Search
               </button>
               {searchQuery ? (
-                <button className="btn btn-ghost btn-sm" disabled={state.loading} type="button" onClick={clearSearch}>
+                <button className="btn btn-ghost btn-sm" disabled={dataQuery.isFetching} type="button" onClick={clearSearch}>
                   <span className="material-symbols-outlined">close</span>
                   Clear
                 </button>
@@ -301,9 +286,9 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
             </form>
           ) : null}
           <PaginationControls
-            loading={state.loading}
-            pagination={state.pagination}
-            rowCount={state.rows.length}
+            loading={dataQuery.isFetching}
+            pagination={pagination}
+            rowCount={rows.length}
             onLimitChange={changeLimit}
             onNext={nextPage}
             onPrevious={previousPage}
@@ -317,7 +302,7 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
                 </tr>
               </thead>
               <tbody>
-                {state.rows.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.id}>
                     {columns.map((column) => <td key={column.label}>{column.render(row)}</td>)}
                     {getPreviewQuestion ? (
@@ -336,7 +321,7 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
                     ) : null}
                   </tr>
                 ))}
-                {state.rows.length === 0 ? (
+                {rows.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length + (getPreviewQuestion ? 1 : 0)}>No records found.</td>
                   </tr>
@@ -346,15 +331,15 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
           </div>
           <div className="mt-3">
             <PaginationControls
-              loading={state.loading}
-              pagination={state.pagination}
-              rowCount={state.rows.length}
+              loading={dataQuery.isFetching}
+              pagination={pagination}
+              rowCount={rows.length}
               onLimitChange={changeLimit}
               onNext={nextPage}
               onPrevious={previousPage}
             />
           </div>
-          {previewQuestion ? <ExamQuestionPreviewModal question={previewQuestion} onClose={() => setPreviewQuestion(null)} /> : null}
+          {previewQuestion ? <QuestionReviewModal question={previewQuestion} showResult={false} onClose={() => setPreviewQuestion(null)} /> : null}
         </section>
       ) : null}
     </Layout>
@@ -362,23 +347,17 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
 }
 
 function DashboardPage() {
-  const [state, setState] = useState({ loading: true, error: '', data: null })
-
-  useEffect(() => {
-    adminRequest('/admin/dashboard')
-      .then((data) => setState({ loading: false, error: '', data }))
-      .catch((error) => setState({ loading: false, error: error.message, data: null }))
-  }, [])
+  const dashboardQuery = useQuery({ queryKey: queryKeys.adminDashboard, queryFn: ({ signal }) => adminRequest('/admin/dashboard', { signal }) })
 
   return (
     <Layout title="Dashboard">
-      {state.loading ? <InlineLoading /> : null}
-      {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
-      {state.data ? (
+      {dashboardQuery.isPending ? <InlineLoading /> : null}
+      {dashboardQuery.isError ? <div className="alert alert-error"><span>{dashboardQuery.error.message}</span></div> : null}
+      {dashboardQuery.data ? (
         <section className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Users" value={state.data.users} />
-          <StatCard label="Questions" value={state.data.questions} />
-          <StatCard label="Open feedback" value={state.data.openFeedback} />
+          <StatCard label="Users" value={dashboardQuery.data.users} />
+          <StatCard label="Questions" value={dashboardQuery.data.questions} />
+          <StatCard label="Open feedback" value={dashboardQuery.data.openFeedback} />
         </section>
       ) : null}
     </Layout>
@@ -398,55 +377,53 @@ function StatCard({ label, value }) {
 
 function FeedbackDetailPage() {
   const { feedbackId } = useParams()
-  const [state, setState] = useState({ loading: true, error: '', data: null })
+  const queryClient = useQueryClient()
   const [message, setMessage] = useState('')
   const [previewQuestion, setPreviewQuestion] = useState(null)
-
-  const load = useCallback(() => {
-    adminRequest(`/admin/feedback/${feedbackId}`)
-      .then((data) => setState({ loading: false, error: '', data }))
-      .catch((error) => setState({ loading: false, error: error.message, data: null }))
-  }, [feedbackId])
-
-  useEffect(() => {
-    load()
-  }, [load])
+  const detailKey = queryKeys.adminFeedbackDetail(feedbackId)
+  const detailQuery = useQuery({ queryKey: detailKey, queryFn: ({ signal }) => adminRequest(`/admin/feedback/${feedbackId}`, { signal }) })
+  const replyMutation = useMutation({ mutationFn: (body) => adminRequest(`/admin/feedback/${feedbackId}/reply`, { method: 'POST', body }) })
+  const statusMutation = useMutation({ mutationFn: (status) => adminRequest(`/admin/feedback/${feedbackId}/status`, { method: 'PATCH', body: { status } }) })
 
   const reply = async (event) => {
     event.preventDefault()
-    await adminRequest(`/admin/feedback/${feedbackId}/reply`, { method: 'POST', body: { message } })
+    await replyMutation.mutateAsync({ message })
     setMessage('')
-    load()
+    await queryClient.invalidateQueries({ queryKey: detailKey })
   }
 
   const setStatus = async (status) => {
-    await adminRequest(`/admin/feedback/${feedbackId}/status`, { method: 'PATCH', body: { status } })
-    load()
+    await statusMutation.mutateAsync(status)
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: detailKey }),
+      queryClient.invalidateQueries({ queryKey: ['admin', '/admin/feedback'] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminDashboard }),
+    ])
   }
 
   return (
     <Layout title="Feedback">
-      {state.loading ? <InlineLoading /> : null}
-      {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
-      {state.data ? (
+      {detailQuery.isPending ? <InlineLoading /> : null}
+      {detailQuery.isError ? <div className="alert alert-error"><span>{detailQuery.error.message}</span></div> : null}
+      {detailQuery.data ? (
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase text-primary">Feedback</p>
-              <h1 className="text-3xl font-black">{state.data.thread.subject}</h1>
-              <p className="text-sm text-base-content/70">{state.data.thread.user?.email}</p>
+              <h1 className="text-3xl font-black">{detailQuery.data.thread.subject}</h1>
+              <p className="text-sm text-base-content/70">{detailQuery.data.thread.user?.email}</p>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 className="btn btn-outline"
                 type="button"
-                disabled={!state.data.thread.question}
-                onClick={() => setPreviewQuestion(state.data.thread.question)}
+                disabled={!detailQuery.data.thread.question}
+                onClick={() => setPreviewQuestion(detailQuery.data.thread.question)}
               >
                 <span className="material-symbols-outlined">visibility</span>
                 Preview
               </button>
-              <select className="select select-bordered" value={state.data.thread.status} onChange={(event) => setStatus(event.target.value)}>
+              <select className="select select-bordered" value={detailQuery.data.thread.status} onChange={(event) => setStatus(event.target.value)}>
                 <option value="open">open</option>
                 <option value="reviewing">reviewing</option>
                 <option value="resolved">resolved</option>
@@ -455,7 +432,7 @@ function FeedbackDetailPage() {
             </div>
           </div>
           <section className="surface-raised grid gap-3 rounded-lg border p-4">
-            {state.data.messages.map((item) => (
+            {detailQuery.data.messages.map((item) => (
               <article className={`chat ${item.senderType === 'admin' ? 'chat-end' : 'chat-start'}`} key={item.id}>
                 <div className="chat-header">{item.senderType}</div>
                 <div className="chat-bubble">{item.message}</div>
@@ -466,7 +443,7 @@ function FeedbackDetailPage() {
             <input className="input input-bordered flex-1" value={message} onChange={(event) => setMessage(event.target.value)} />
             <button className="btn btn-primary" disabled={!message} type="submit">Reply</button>
           </form>
-          {previewQuestion ? <ExamQuestionPreviewModal question={previewQuestion} onClose={() => setPreviewQuestion(null)} /> : null}
+          {previewQuestion ? <QuestionReviewModal question={previewQuestion} showResult={false} onClose={() => setPreviewQuestion(null)} /> : null}
         </div>
       ) : null}
     </Layout>

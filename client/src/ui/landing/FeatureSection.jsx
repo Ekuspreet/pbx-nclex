@@ -26,19 +26,32 @@ function FeatureSection({ features }) {
                   index % 2 === 1 ? 'md:order-2' : ''
                 }`}
               >
+                {feature.label && <p className="text-kicker">{feature.label}</p>}
                 <h3 className="text-h3">{feature.title}</h3>
-                <p className="text-body text-muted">{feature.subheading}</p>
+                {feature.subheading && <p className="text-body text-muted">{feature.subheading}</p>}
+                {feature.bullets && (
+                  <ul className="rule-list">
+                    {feature.bullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <figure className="m-0 w-full" aria-label={feature.visual.ariaLabel}>
                 <div className="card surface-raised">
                   <div className="card-body p-md gap-4">
                     <p className="text-kicker">{feature.visual.label}</p>
                     <h3 className="text-h3">{feature.visual.title}</h3>
-                    <ul className="rule-list">
-                      {feature.visual.rows.map((row) => (
-                        <li key={row}>{row}</li>
-                      ))}
-                    </ul>
+                    {feature.visual.description && (
+                      <p className="text-body text-muted">{feature.visual.description}</p>
+                    )}
+                    {feature.visual.rows && (
+                      <ul className="rule-list">
+                        {feature.visual.rows.map((row) => (
+                          <li key={row}>{row}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               </figure>

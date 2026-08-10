@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import brandlogo from '../../assets/pbx-logo.png'
+import BrandLogo from '../landing/BrandLogo'
 
 function SidebarIcon({ name }) {
   const common = {
@@ -38,14 +40,14 @@ function SidebarLink({ item, onNavigate }) {
   )
 }
 
-export function AccountPanel({ name }) {
+export function AccountPanel({ membershipLabel, name }) {
   return (
     <section className="border-t border-neutral-content/10 pt-2">
       <Link className="flex w-full items-center gap-3 rounded-lg p-2 text-neutral-content transition-colors hover:bg-neutral-content/7" to="/profile">
         <div className="avatar avatar-placeholder shrink-0"><div className="w-10 rounded-full bg-primary text-primary-content"><span className="text-xs font-bold">{getInitials(name)}</span></div></div>
         <div className="min-w-0 text-left">
           <p className="truncate text-xs font-bold">{name}</p>
-          <p className="text-xs text-neutral-content/60">22 Days Left</p>
+          <p className="text-xs text-neutral-content/60">{membershipLabel}</p>
         </div>
       </Link>
     </section>
@@ -87,7 +89,14 @@ function DrawerSidebar({ account, navAriaLabel, navGroups, onClose, user }) {
   return (
     <aside className="flex min-h-full w-65 flex-col bg-neutral px-5 py-8 text-neutral-content shadow-lg">
       <div className="relative mb-5 text-center">
-        <div className="mx-auto grid size-16 place-items-center rounded-box bg-primary text-lg font-extrabold text-primary-content shadow-md">PBX</div>
+
+        <BrandLogo brand={
+          {
+            logoSrc: brandlogo,
+            logoAlt: 'PBX NCLEX-RN',
+            name: '',
+          }
+        } />
         <p className="mt-3 text-xs font-bold uppercase tracking-wide">NCLEX-RN</p>
         <p className="text-xs text-neutral-content/60">Question Bank</p>
         <p className="mt-5 text-sm font-bold uppercase">{name}</p>
@@ -132,7 +141,7 @@ function DrawerHeader({ accountIdentity, onOpenSidebar, title }) {
   )
 }
 
-function DrawerShell({ account, accountIdentity, brand, children, drawerId = 'app-drawer', navAriaLabel = 'App pages', navGroups, title, user }) {
+function DrawerShell({ account, accountIdentity, brand, children, drawerId = 'app-drawer', mainClassName = 'bg-base-200', navAriaLabel = 'App pages', navGroups, title, user }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -142,7 +151,7 @@ function DrawerShell({ account, accountIdentity, brand, children, drawerId = 'ap
       <div className="drawer-content flex min-h-screen flex-col">
         <DrawerHeader accountIdentity={accountIdentity} onOpenSidebar={() => setSidebarOpen(true)} title={title} />
 
-        <main className="bg-base-200 flex-1">
+        <main className={`${mainClassName} flex-1`}>
           <section className="grid min-h-[calc(100vh-5rem)] w-full content-start gap-8 px-5 py-10 md:px-10 md:py-12 lg:px-16 lg:py-16">
             {children}
           </section>

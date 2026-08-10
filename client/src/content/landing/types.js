@@ -16,9 +16,11 @@
 
 /**
  * @typedef {Object} Feature
+ * @property {string} [label]
  * @property {string} title
- * @property {string} subheading
- * @property {{ariaLabel: string, label: string, title: string, rows: string[]}} visual
+ * @property {string} [subheading]
+ * @property {string[]} [bullets]
+ * @property {{ariaLabel: string, label: string, title: string, description?: string, rows?: string[]}} visual
  */
 
 /**

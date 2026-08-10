@@ -1,7 +1,21 @@
 import { apiRequest } from './apiClient.js'
 
-export function getCurrentUser() {
-  return apiRequest('/auth/me')
+export function getCurrentUser(options = {}) {
+  return apiRequest('/auth/me', options)
+}
+
+export function updateCurrentUser(values) {
+  return apiRequest('/auth/profile', {
+    method: 'PATCH',
+    body: values,
+  })
+}
+
+export function setCurrentUserPassword(values) {
+  return apiRequest('/auth/set-password', {
+    method: 'POST',
+    body: values,
+  })
 }
 
 export function signupWithEmail(values) {

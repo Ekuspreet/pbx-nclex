@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import {
   createHighlight,
   createNote,
+  deleteHighlight,
   getTest,
   listHighlights,
   saveTestAnswer,
@@ -20,11 +22,14 @@ import TestQuestion from '../features/test/components/TestQuestion.jsx'
 import TestShell, { TestPageState } from '../features/test/components/TestShell.jsx'
 import TestTopBar from '../features/test/components/TestTopBar.jsx'
 import { applyHighlightsToHtml, getInitialQuestionIndex, isMcqTestQuestion } from '../features/test/testUtils.js'
+import { stripExhibitLink } from '../ui/questionnaire/questionHelpers.js'
+import { queryKeys } from '../services/queryKeys.js'
 
 const QUESTION_TEXT_SIZES = ['text-sm', 'text-base', 'text-lg', 'text-xl']
 
 function TestPage() {
   const auth = useAuth()
+  const queryClient = useQueryClient()
   const { testId } = useParams()
   const navigate = useNavigate()
   const [state, setState] = useState({ loading: true, error: '', test: null, questions: [] })
@@ -32,21 +37,33 @@ function TestPage() {
   const [current, setCurrent] = useState(0)
   const [navigatorOpen, setNavigatorOpen] = useState(false)
   const [modal, setModal] = useState(null)
-  const [theme, setTheme] = useState('nord')
+  const [theme, setTheme] = useState(() => window.localStorage.getItem('testTheme') === 'dim' ? 'dim' : 'nord')
   const [textSize, setTextSize] = useState(1)
   const [timeMs, setTimeMs] = useState(0)
-  const [highlights, setHighlights] = useState([])
   const lastSavedTimer = useRef(0)
   const expirationSubmitted = useRef(false)
+  const testQuery = useQuery({ queryKey: queryKeys.test(testId), queryFn: ({ signal }) => getTest(testId, { signal }) })
+  const answerMutation = useMutation({ mutationFn: (values) => saveTestAnswer(testId, values) })
+  const statusMutation = useMutation({ mutationFn: (values) => updateTestStatus(testId, values) })
+  const timerMutation = useMutation({ mutationFn: (values) => updateTestTimer(testId, values) })
+  const submitMutation = useMutation({ mutationFn: () => submitTest(testId) })
+  const createHighlightMutation = useMutation({ mutationFn: createHighlight })
+  const deleteHighlightMutation = useMutation({ mutationFn: deleteHighlight })
+  const createNoteMutation = useMutation({ mutationFn: createNote })
 
   const currentQuestion = state.questions[current]
+  const highlightParams = { testId, questionId: currentQuestion?.questionId }
+  const highlightsKey = queryKeys.highlights(highlightParams)
+  const highlightsQuery = useQuery({
+    queryKey: highlightsKey,
+    queryFn: ({ signal }) => listHighlights(highlightParams, { signal }),
+    enabled: Boolean(currentQuestion),
+  })
+  const highlights = highlightsQuery.data?.highlights || []
   const explanationOpen = Boolean(currentQuestion?.checkedAt && state.test?.tutorMode)
   useEffect(() => {
-    let active = true
-
-    getTest(testId)
-      .then((payload) => {
-        if (!active) return
+    if (!testQuery.data) return
+    const payload = testQuery.data
         const questions = (payload.questions || []).filter(isMcqTestQuestion)
         const nextAnswers = {}
         for (const item of questions) {
@@ -59,20 +76,15 @@ function TestPage() {
         setCurrent(getInitialQuestionIndex(questions, payload.test.currentPosition || 0))
         setTimeMs(payload.test.timed ? payload.test.remainingMs : payload.test.elapsedMs)
         setState({ loading: false, error: '', test: payload.test, questions })
-      })
-      .catch((error) => {
-        if (active) setState({ loading: false, error: error.message, test: null, questions: [] })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [testId])
+  }, [testQuery.data])
 
   useEffect(() => {
-    if (!currentQuestion) return
-    listHighlights({ testId, questionId: currentQuestion.questionId }).then((payload) => setHighlights(payload.highlights || []))
-  }, [currentQuestion, testId])
+    if (testQuery.isError) setState({ loading: false, error: testQuery.error.message, test: null, questions: [] })
+  }, [testQuery.error, testQuery.isError])
+
+  useEffect(() => {
+    window.localStorage.setItem('testTheme', theme)
+  }, [theme])
 
   useEffect(() => {
     if (!state.test || state.test.status === 'completed') return undefined
@@ -92,18 +104,18 @@ function TestPage() {
     if (state.test.timed) return
     if (Math.abs(timeMs - lastSavedTimer.current) < 15000) return
     lastSavedTimer.current = timeMs
-    updateTestTimer(testId, { elapsedMs: timeMs }).catch(() => {})
-  }, [state.test, testId, timeMs])
+    timerMutation.mutate({ elapsedMs: timeMs })
+  }, [state.test, timeMs, timerMutation])
 
   useEffect(() => {
     if (!state.test?.timed || state.test.status === 'completed' || timeMs > 0) return
     if (expirationSubmitted.current) return
 
     expirationSubmitted.current = true
-    submitTest(testId)
+    submitMutation.mutateAsync()
       .then((payload) => navigate(`/tests/${payload.test.id}/result`, { replace: true }))
       .catch((error) => setState((currentState) => ({ ...currentState, error: error.message })))
-  }, [navigate, state.test, testId, timeMs])
+  }, [navigate, state.test, submitMutation, timeMs])
 
   const updateLocalQuestion = (questionId, patch) => {
     setState((currentState) => ({
@@ -118,7 +130,7 @@ function TestPage() {
     if (!currentQuestion) return
 
     const answerState = answers[currentQuestion.questionId]
-    const payload = await saveTestAnswer(testId, {
+    const payload = await answerMutation.mutateAsync({
       questionId: currentQuestion.questionId,
       answer: answerState?.value ?? '',
       position: currentQuestion.position,
@@ -145,7 +157,7 @@ function TestPage() {
     setCurrent(index)
     setNavigatorOpen(false)
     updateLocalQuestion(item.questionId, { visited: true })
-    await updateTestStatus(testId, {
+    await statusMutation.mutateAsync({
       questionId: item.questionId,
       currentPosition: item.position,
       visited: true,
@@ -157,32 +169,43 @@ function TestPage() {
 
     const nextValue = !currentQuestion.markedForReview
     updateLocalQuestion(currentQuestion.questionId, { markedForReview: nextValue })
-    await updateTestStatus(testId, {
+    await statusMutation.mutateAsync({
       questionId: currentQuestion.questionId,
       markedForReview: nextValue,
     })
   }
 
-  const addHighlight = async (exact, region = 'question') => {
-    if (!exact || !currentQuestion) return
-    await createHighlight({
+  const addHighlight = async (selector, region = 'question') => {
+    if (!selector?.exact || !currentQuestion) return
+    await createHighlightMutation.mutateAsync({
       testId,
       questionId: currentQuestion.questionId,
-      selector: { exact, region },
+      selector: { ...selector, region },
       color: 'yellow',
     })
-    const payload = await listHighlights({ testId, questionId: currentQuestion.questionId })
-    setHighlights(payload.highlights || [])
+    await queryClient.invalidateQueries({ queryKey: ['highlights'] })
+  }
+
+  const removeHighlights = async (highlightIds) => {
+    const ids = [...new Set(highlightIds)].filter(Boolean)
+    if (ids.length === 0) return
+    await Promise.all(ids.map((highlightId) => deleteHighlightMutation.mutateAsync(highlightId)))
+    queryClient.setQueryData(highlightsKey, (currentPayload) => ({
+      ...currentPayload,
+      highlights: (currentPayload?.highlights || []).filter((highlight) => !ids.includes(highlight.id)),
+    }))
+    await queryClient.invalidateQueries({ queryKey: ['highlights'] })
   }
 
   const addNotebookNote = async (content) => {
     if (!content || !currentQuestion) return
-    await createNote({
+    await createNoteMutation.mutateAsync({
       testId,
       questionId: currentQuestion.questionId,
       title: `QID ${currentQuestion.question.questionId}`,
       content,
     })
+    await queryClient.invalidateQueries({ queryKey: ['notes'] })
     window.getSelection()?.removeAllRanges()
     setModal('notes')
   }
@@ -190,7 +213,8 @@ function TestPage() {
   const endTest = async () => {
     if (!window.confirm('Are you sure you want to end this test?')) return
 
-    const payload = await submitTest(testId)
+    const payload = await submitMutation.mutateAsync()
+    await queryClient.invalidateQueries({ queryKey: queryKeys.tests })
     navigate(`/tests/${payload.test.id}/result`)
   }
 
@@ -225,12 +249,13 @@ function TestPage() {
 
   const highlightedQuestion = {
     ...currentQuestion.question,
-    questionText: applyHighlightsToHtml(currentQuestion.question.questionText, highlights),
+    questionText: applyHighlightsToHtml(stripExhibitLink(currentQuestion.question.questionText), highlights),
   }
   const highlightedExplanation = applyHighlightsToHtml(currentQuestion.question.explanationText, highlights, 'explanation')
 
   return (
     <TestShell
+      mode="test"
       theme={theme}
       navigator={navigatorOpen ? (
         <QuestionNavigator
@@ -254,12 +279,11 @@ function TestPage() {
         <TestNavbar
           marked={Boolean(currentQuestion?.markedForReview)}
           onCalculator={() => setModal('calculator')}
-          onDecreaseText={() => setTextSize((size) => Math.max(0, size - 1))}
           onFeedback={() => setModal('feedback')}
           onFullscreen={toggleFullscreen}
-          onIncreaseText={() => setTextSize((size) => Math.min(3, size + 1))}
           onMark={toggleMark}
           onNotes={() => setModal('notes')}
+          onSetTextSize={setTextSize}
           onTheme={() => setTheme((value) => value === 'nord' ? 'dim' : 'nord')}
           textSize={textSize}
         />
@@ -293,6 +317,7 @@ function TestPage() {
         submitLabel={state.test.tutorMode ? 'Check' : 'Save'}
         textSizeClass={QUESTION_TEXT_SIZES[textSize]}
         onHighlight={(exact) => addHighlight(exact, 'question')}
+        onUnhighlight={removeHighlights}
         onNotebook={addNotebookNote}
         onAnswerChange={(value) => setAnswers((currentAnswers) => ({
           ...currentAnswers,
@@ -304,6 +329,7 @@ function TestPage() {
         <TestExplanation
           html={highlightedExplanation}
           onHighlight={(exact) => addHighlight(exact, 'explanation')}
+          onUnhighlight={removeHighlights}
           onNotebook={addNotebookNote}
           textSizeClass={QUESTION_TEXT_SIZES[textSize]}
         />

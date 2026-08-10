@@ -2,8 +2,10 @@ import { motion } from 'motion/react'
 import { sectionIntro } from '../../motion/landingPresets.js'
 import PricingCard from './PricingCard.jsx'
 import SectionHeading from './SectionHeading.jsx'
+import { usePlanCatalog } from '../../hooks/usePlanCatalog.js'
 
-function PricingSection({ pricing }) {
+function PricingSection({ pricing: fallbackPricing }) {
+  const pricing = usePlanCatalog() || fallbackPricing
   return (
     <section className="surface-muted py-section" id={pricing.id}>
       <div className="container-page">

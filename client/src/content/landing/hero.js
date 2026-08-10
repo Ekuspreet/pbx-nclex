@@ -1,7 +1,7 @@
 export const hero = {
   id: 'home',
   eyebrow: 'PBX Nursing',
-  title: 'Master Nursing Questions Like a Pro',
+  title: 'NCLEX-RN Q.Bank\nWhere Your Progress Matters More Than Your Renewal Date',
   primaryCta: {
     label: 'Sign up',
     href: '/signup',
@@ -23,9 +23,8 @@ export const hero = {
     ariaLabel: 'Background video for PBX Nursing landing page',
   },
   metrics: [
-    { value: 'Realistic', label: 'nursing practice' },
-    { value: 'Insightful', label: 'clear answer rationales' },
-    { value: 'Progressive', label: 'readiness tracking' },
+    { value: 'Realistic', label: 'NCLEX-RN practice Q.Bank' },
+    { value: 'Insightful', label: 'Clear Cut answer rationales' },
+    { value: 'Progressive', label: 'Track Your Score' },
   ],
-
 }

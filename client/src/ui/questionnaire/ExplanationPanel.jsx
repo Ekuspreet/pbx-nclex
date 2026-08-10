@@ -12,7 +12,7 @@ const BROKEN_IMAGE_PLACEHOLDER = `data:image/svg+xml;charset=UTF-8,${encodeURICo
 `)}`
 
 function getApiOrigin() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://localhost:5000/api/v1').replace(/\/$/, '')
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
 
   try {
     const url = new URL(apiBase)
@@ -40,10 +40,10 @@ function getDownloadImageUrl(source) {
     const fileSegments = downloadsIndex >= 0 ? segments.slice(downloadsIndex + 1) : segments.slice(-1)
     const filePath = fileSegments.map(encodePathSegment).join('/')
 
-    return filePath ? `${getApiOrigin()}/public/downloads/${filePath}` : ''
+    return filePath ? `${getApiOrigin()}/public/assets/${filePath}` : ''
   } catch {
     const fileName = String(source).trim().replace(/\\/g, '/').split(/[?#]/)[0].split('/').filter(Boolean).pop()
-    return fileName ? `${getApiOrigin()}/public/downloads/${encodePathSegment(fileName)}` : ''
+    return fileName ? `${getApiOrigin()}/public/assets/${encodePathSegment(fileName)}` : ''
   }
 }
 
@@ -94,9 +94,9 @@ function ExplanationPanel({ html, hidden = false, className = '' }) {
   }, [normalizedHtml])
 
   return (
-    <div className={`overflow-scroll ${className}`} hidden={hidden} ref={panelRef}>
-      <div className="mb-5 flex items-center gap-2"><h2 className="font-bold">Explanation</h2><span className="material-symbols-outlined cursor-pointer">volume_up</span></div>
-      <ReferenceHtml html={normalizedHtml} className="space-y-2" />
+    <div className={`overflow-auto ${className}`} hidden={hidden} ref={panelRef}>
+      <div className="flex items-center gap-2"><h2 className="font-bold">Explanation</h2></div>
+      <ReferenceHtml html={normalizedHtml} className="leading-[1.6]" />
     </div>
   )
 }

@@ -16,10 +16,8 @@ function AuthPage({ mode }) {
   const location = useLocation()
   const isSignup = mode === 'signup'
   const [values, setValues] = useState({
-    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
   })
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState(null)
@@ -32,13 +30,11 @@ function AuthPage({ mode }) {
 
   const validate = () => {
     const nextErrors = {}
-    if (isSignup && values.name.trim().length < 2) nextErrors.name = 'Enter your name.'
     if (!emailPattern.test(values.email)) nextErrors.email = 'Enter a valid email address.'
     if (values.password.length < 8) nextErrors.password = 'Use at least 8 characters.'
     if (!/[A-Za-z]/.test(values.password) || !/\d/.test(values.password)) {
       nextErrors.password = 'Use at least 8 characters with a letter and number.'
     }
-    if (isSignup && values.confirmPassword !== values.password) nextErrors.confirmPassword = 'Passwords must match.'
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
@@ -46,32 +42,13 @@ function AuthPage({ mode }) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setStatus(null)
+    if (isSignup) return
     if (!validate()) return
     setIsLoading(true)
 
     try {
-      if (isSignup) {
-        const result = await auth.signup({
-          name: values.name,
-          email: values.email,
-          password: values.password,
-        })
-
-        navigate(`/verify-email?email=${encodeURIComponent(values.email.trim())}`, {
-          state: {
-            email: values.email.trim(),
-            message: result.message,
-            resendCooldownSeconds: result.emailVerification?.resendCooldownSeconds,
-          },
-        })
-      } else {
-        await auth.login({
-          email: values.email,
-          password: values.password,
-        })
-
-        navigate(location.state?.from?.pathname || '/home', { replace: true })
-      }
+      await auth.login({ email: values.email, password: values.password })
+      navigate(location.state?.from?.pathname || '/home', { replace: true })
     } catch (error) {
       setStatus({ type: 'error', message: getApiErrorMessage(error) })
     } finally {
@@ -89,8 +66,8 @@ function AuthPage({ mode }) {
     setIsLoading(true)
 
     try {
-      await auth.loginWithGoogle(response.credential)
-      navigate('/home', { replace: true })
+      const result = await auth.loginWithGoogle(response.credential)
+      navigate(result.user.hasPassword ? '/home' : '/profile', { replace: true })
     } catch (error) {
       setStatus({ type: 'error', message: getApiErrorMessage(error) })
     } finally {
@@ -121,6 +98,7 @@ function AuthPage({ mode }) {
               <div className="grid gap-2 text-center">
                 <p className="text-kicker">{isSignup ? 'Start learning' : 'Welcome back'}</p>
                 <h1 className="text-3xl font-black">{isSignup ? 'Create your account' : 'Log in to PBX Nursing'}</h1>
+                {isSignup ? <p className="text-sm text-base-content/65">New accounts are created securely with Google. After signing in, you can add a password from your profile.</p> : null}
               </div>
 
               {status ? (
@@ -144,44 +122,32 @@ function AuthPage({ mode }) {
                 </button>
               )}
 
-              <div className="divider my-0">or</div>
+              {!isSignup ? <div className="divider my-0">or</div> : null}
 
-              {isSignup ? (
-                <label className="grid gap-1">
-                  <span className="label-text">Name</span>
-                  <input className={`input input-bordered w-full ${errors.name ? 'input-error' : ''}`} name="name" value={values.name} onChange={updateValue} disabled={isLoading} />
-                  {errors.name ? <span className="mt-1 text-xs text-error">{errors.name}</span> : null}
-                </label>
-              ) : null}
-
-              <label className="grid gap-1">
+              {!isSignup ? <label className="grid gap-1">
                 <span className="label-text">Email</span>
                 <input className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`} name="email" type="email" value={values.email} onChange={updateValue} disabled={isLoading} />
                 {errors.email ? <span className="mt-1 text-xs text-error">{errors.email}</span> : null}
-              </label>
+              </label> : null}
 
-              <label className="grid gap-1">
+              {!isSignup ? <label className="grid gap-1">
                 <span className="label-text">Password</span>
                 <input className={`input input-bordered w-full ${errors.password ? 'input-error' : ''}`} name="password" type="password" value={values.password} onChange={updateValue} disabled={isLoading} />
                 {errors.password ? <span className="mt-1 text-xs text-error">{errors.password}</span> : null}
-              </label>
+              </label> : null}
 
-              {isSignup ? (
-                <label className="grid gap-1">
-                  <span className="label-text">Confirm password</span>
-                  <input className={`input input-bordered w-full ${errors.confirmPassword ? 'input-error' : ''}`} name="confirmPassword" type="password" value={values.confirmPassword} onChange={updateValue} disabled={isLoading} />
-                  {errors.confirmPassword ? <span className="mt-1 text-xs text-error">{errors.confirmPassword}</span> : null}
-                </label>
-              ) : (
+              {!isSignup ? (
                 <Link className="link link-primary text-sm font-bold" to="/forgot-password">
                   Forgot password?
                 </Link>
-              )}
+              ) : null}
 
-              <button className="btn btn-primary" type="submit" disabled={isLoading}>
-                {isLoading ? <span className="loading loading-spinner loading-xs" /> : null}
-                {isSignup ? 'Sign up' : 'Log in'}
-              </button>
+              {!isSignup ? (
+                <button className="btn btn-primary" type="submit" disabled={isLoading}>
+                  {isLoading ? <span className="loading loading-spinner loading-xs" /> : null}
+                  Log in
+                </button>
+              ) : null}
               <p className="text-center text-sm text-base-content/70">
                 {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
                 <Link className="link link-primary font-bold" to={isSignup ? '/login' : '/signup'}>

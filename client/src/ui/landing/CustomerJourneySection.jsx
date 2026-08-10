@@ -31,7 +31,9 @@ function CustomerJourneySection() {
       <div className="container-page">
         <SectionHeading
           title="A guided path from uncertainty to readiness."
-          description="We help you discover what to do next: start a test, answer calmly, review the reasoning, and return with a sharper focus."
+          description="PBX Nursing helps you move forward with purpose—begin a practice test, answer with confidence,
+understand the rationale, identify areas for improvement, and return with a clearer, more focused
+study plan."
           align="center"
         />
 

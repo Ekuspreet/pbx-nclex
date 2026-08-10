@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import AnswerIndicator from '../../../ui/questionnaire/AnswerIndicator.jsx'
 import ReferenceHtml from '../../../ui/questionnaire/ReferenceHtml.jsx'
 import { getCorrectAnswer, stripExhibitLink } from '../../../ui/questionnaire/questionHelpers.js'
+import { queryKeys } from '../../../services/queryKeys.js'
 
 function getApiOrigin() {
-  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/$/, '')
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '')
 
   try {
     const url = new URL(apiBase)
@@ -23,30 +25,16 @@ function getExhibitUrl(exhibit) {
 }
 
 function ExhibitModal({ exhibit, onClose }) {
-  const [state, setState] = useState({ loading: true, error: '', html: '' })
-
-  useEffect(() => {
-    let active = true
-    const url = getExhibitUrl(exhibit)
-
-    setState({ loading: true, error: '', html: '' })
-
-    fetch(url)
-      .then((response) => {
+  const url = getExhibitUrl(exhibit)
+  const exhibitQuery = useQuery({
+    queryKey: queryKeys.exhibit(url),
+    queryFn: async ({ signal }) => {
+      const response = await fetch(url, { signal })
         if (!response.ok) throw new Error('Unable to load exhibit.')
-        return response.text()
-      })
-      .then((html) => {
-        if (active) setState({ loading: false, error: '', html })
-      })
-      .catch((error) => {
-        if (active) setState({ loading: false, error: error.message, html: '' })
-      })
-
-    return () => {
-      active = false
-    }
-  }, [exhibit])
+      return response.text()
+    },
+    enabled: Boolean(url),
+  })
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-neutral/60 p-3 sm:p-4">
@@ -58,17 +46,17 @@ function ExhibitModal({ exhibit, onClose }) {
           </button>
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          {state.loading ? (
+          {exhibitQuery.isPending ? (
             <div className="grid min-h-48 place-items-center">
               <span className="loading loading-spinner loading-lg text-primary" />
             </div>
           ) : null}
-          {state.error ? <div className="alert alert-error"><span>{state.error}</span></div> : null}
-          {!state.loading && !state.error ? (
+          {exhibitQuery.isError ? <div className="alert alert-error"><span>{exhibitQuery.error.message}</span></div> : null}
+          {!exhibitQuery.isPending && !exhibitQuery.isError ? (
             <iframe
               className="h-[65vh] w-full rounded border border-base-300 bg-white"
               sandbox=""
-              srcDoc={state.html}
+              srcDoc={exhibitQuery.data}
               title={exhibit?.title || 'Exhibit'}
             />
           ) : null}
@@ -103,35 +91,95 @@ function ExhibitButtons({ exhibits = [] }) {
 
 function McqQuestionPage({ question, answer, submitted, onChange }) {
   const correctAnswer = getCorrectAnswer(question)
+  const [crossedChoices, setCrossedChoices] = useState(() => new Set())
+  const longPressTimer = useRef(null)
+  const pressStart = useRef(null)
+  const suppressChoiceClick = useRef(false)
+
+  const cancelLongPress = () => {
+    window.clearTimeout(longPressTimer.current)
+    longPressTimer.current = null
+    pressStart.current = null
+  }
+
+  useEffect(() => {
+    setCrossedChoices(new Set())
+    cancelLongPress()
+    suppressChoiceClick.current = false
+
+    return cancelLongPress
+  }, [question.questionId])
+
+  const startLongPress = (event, choiceNumber) => {
+    if (event.button !== undefined && event.button !== 0) return
+
+    cancelLongPress()
+    suppressChoiceClick.current = false
+    pressStart.current = { x: event.clientX, y: event.clientY }
+    longPressTimer.current = window.setTimeout(() => {
+      setCrossedChoices((currentChoices) => {
+        const nextChoices = new Set(currentChoices)
+        if (nextChoices.has(choiceNumber)) nextChoices.delete(choiceNumber)
+        else nextChoices.add(choiceNumber)
+        return nextChoices
+      })
+      suppressChoiceClick.current = true
+      longPressTimer.current = null
+    }, 600)
+  }
+
+  const moveLongPress = (event) => {
+    if (!pressStart.current) return
+    const distance = Math.hypot(event.clientX - pressStart.current.x, event.clientY - pressStart.current.y)
+    if (distance > 8) cancelLongPress()
+  }
+
+  const handleChoiceClick = (event) => {
+    if (!suppressChoiceClick.current) return
+    event.preventDefault()
+    event.stopPropagation()
+    suppressChoiceClick.current = false
+  }
 
   return (
     <div id={`mcq-${question.questionId}`} className="h-full min-h-0">
-      <div className="p-1">
+      <div>
         <ExhibitButtons exhibits={question.exhibits || []} />
         <ReferenceHtml
           as="p"
-          className="mt-2 leading-relaxed font-normal"
+          className="font-normal leading-[1.6]"
           html={stripExhibitLink(question.questionText)}
         />
-        <div className="form-control mt-3 flex flex-col gap-1">
+        <div className="form-control flex flex-col">
           {(question.answerChoiceList || []).map((choice) => {
             const isCorrect = String(choice.choiceNumber) === correctAnswer
             const isSelected = String(choice.choiceNumber) === String(answer ?? '')
             const showIndicator = submitted && (isCorrect || isSelected)
 
             return (
-              <label className="flex min-h-10 cursor-pointer items-center justify-start gap-1" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
-                <AnswerIndicator show={showIndicator} correct={isCorrect} />
+              <label className="relative mb-2 min-h-[42px] cursor-pointer py-[10px] pl-[50px] pr-[5px] leading-[1.3]" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
+                <AnswerIndicator className="absolute left-0 top-1/2 z-10 -translate-y-1/2" show={showIndicator} correct={isCorrect} />
                 <input
                   type="radio"
                   name={`answer-${question.questionId}`}
-                  className="size-[22px] shrink-0 appearance-none rounded-[2px] border border-base-content/25 bg-base-100 checked:border-4 checked:border-base-100 checked:bg-test-toolbar checked:outline checked:outline-1 checked:outline-base-content/25"
+                  className="test-option-input absolute left-[22px] top-1/2 size-[22px] -translate-y-1/2 appearance-none rounded-[4px] border-2 border-base-100 bg-base-100 shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33)] checked:border-base-100 checked:bg-test-toolbar checked:shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33),inset_0_0_0_4px_white]"
                   value={choice.choiceNumber}
                   checked={isSelected}
                   onChange={() => onChange(String(choice.choiceNumber))}
                   disabled={submitted}
                 />
-                <span className="label-text ml-1" dangerouslySetInnerHTML={{ __html: choice.choice }} />
+                <ReferenceHtml
+                  as="span"
+                  className={`label-text ${crossedChoices.has(choice.choiceNumber) ? 'line-through opacity-60' : ''}`}
+                  onClick={handleChoiceClick}
+                  onContextMenu={(event) => suppressChoiceClick.current && event.preventDefault()}
+                  onPointerCancel={cancelLongPress}
+                  onPointerDown={(event) => startLongPress(event, choice.choiceNumber)}
+                  onPointerLeave={cancelLongPress}
+                  onPointerMove={moveLongPress}
+                  onPointerUp={cancelLongPress}
+                  html={choice.choice}
+                />
               </label>
             )
           })}

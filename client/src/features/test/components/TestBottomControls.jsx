@@ -1,6 +1,6 @@
 function TestBottomControls({ canNext, canPrevious, isLast, onEnd, onFinish, onNavigator, onNext, onPause, onPrevious }) {
   return (
-    <footer className="flex min-h-10 shrink-0 flex-wrap justify-between bg-test-bar px-3.5 text-[17px] font-bold text-test-bar-content">
+    <footer className="flex min-h-10 shrink-0 flex-wrap justify-between bg-test-bar px-[14px] text-[17px] font-bold text-test-bar-content">
       <div className="flex w-full flex-wrap items-stretch sm:w-auto">
         <button type="button" className="flex min-h-10 cursor-pointer items-center gap-1 px-3 hover:text-test-bar-hover" onClick={onEnd}>
           <span className="material-symbols-outlined !text-[18px]">logout</span> End

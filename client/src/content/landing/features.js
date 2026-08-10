@@ -1,41 +1,35 @@
 export const features = {
   id: 'features',
   eyebrow: 'Our Special Features',
-  title: 'A focused nursing testing workspace.',
+  title: 'Focused Testing Workspace for NCLEX-RN Exam Success',
   subheading:
-    'The experience keeps instructions, question answering, navigation, and rationales close together without adding avoidable noise.',
+    'The streamlined interface brings instructions, questions, navigation, and answer rationales together in one focused workspace—without unnecessary distractions.',
   items: [
     {
-      title: 'Organized learning material',
+      title: 'Professionally Organized Q.Bank',
       subheading:
-        'Start with clear instructions, visible test status, and a direct path into the next available question.',
+        'Begin with clear instructions, real-time test status, and seamless access to all available questions.',
       visual: {
-        ariaLabel: 'Preview of grouped nursing learning material',
+        ariaLabel: 'Benefits of the PBX Nursing question bank',
         label: 'Study folder',
-        title: 'Readiness block',
-        rows: ['Timed mode context', 'Question count', 'Resume-ready state'],
+        title: 'Our Question Bank Helps to—',
+        rows: ['Diagnose the gap', 'Practice deliberately', 'Review the why'],
       },
     },
     {
-      title: 'Practice with review context',
-      subheading:
-        'Answer single-choice, select-all, and numeric items with validation, disabled submit states, and immediate rationale review after submission.',
+      label: 'Practice set',
+      title: 'What We Offer—',
+      bullets: [
+        'Realistic NCLEX-RN practice questions',
+        'Clear, focused rationales',
+        'Assured confidence for exam day',
+      ],
       visual: {
-        ariaLabel: 'Preview of practice and review context',
-        label: 'Practice set',
-        title: 'Question panel',
-        rows: ['Answer selection', 'Submit feedback', 'Explanation panel'],
-      },
-    },
-    {
-      title: 'A calmer preparation rhythm',
-      subheading:
-        'Move through the block with previous and next controls, a navigator list, and compact progress indicators.',
-      visual: {
-        ariaLabel: 'Preview of a calm progress summary',
-        label: 'Progress',
-        title: 'Test controls',
-        rows: ['Navigator', 'Progress bar', 'Completion summary'],
+        ariaLabel: 'Why students choose PBX Nursing',
+        label: 'Why Choose PBX Nursing?',
+        title: 'Built to Support Your Success',
+        description:
+          'At PBX Nursing, your progress is at the centre of everything we create. Preparing for the NCLEX-RN requires commitment, confidence, and the right guidance. Our realistic practice questions, clear rationales, and performance-focused learning tools are designed to help you strengthen your knowledge, identify improvement areas, and move toward exam day with greater confidence.',
       },
     },
   ],

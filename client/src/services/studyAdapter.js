@@ -1,11 +1,19 @@
 import { apiRequest } from './apiClient.js'
 
-export function getDashboard() {
-  return apiRequest('/dashboard')
+export function getDashboard(options = {}) {
+  return apiRequest('/dashboard', options)
 }
 
-export function getQuestionStats() {
-  return apiRequest('/questions/stats')
+export function getPlans(options = {}) {
+  return apiRequest('/plans', { ...options, skipAuthRefresh: true })
+}
+
+export function getPaymentHistory(options = {}) {
+  return apiRequest('/payments/history', options)
+}
+
+export function getQuestionStats(options = {}) {
+  return apiRequest('/questions/stats', options)
 }
 
 export function createTest(payload) {
@@ -15,12 +23,12 @@ export function createTest(payload) {
   })
 }
 
-export function listTests() {
-  return apiRequest('/tests')
+export function listTests(options = {}) {
+  return apiRequest('/tests', options)
 }
 
-export function getTest(testId) {
-  return apiRequest(`/tests/${testId}`)
+export function getTest(testId, options = {}) {
+  return apiRequest(`/tests/${testId}`, options)
 }
 
 export function saveTestAnswer(testId, payload) {
@@ -50,13 +58,13 @@ export function submitTest(testId) {
   })
 }
 
-export function getTestResult(testId) {
-  return apiRequest(`/tests/${testId}/result`)
+export function getTestResult(testId, options = {}) {
+  return apiRequest(`/tests/${testId}/result`, options)
 }
 
-export function listNotes(params = {}) {
+export function listNotes(params = {}, options = {}) {
   const search = new URLSearchParams(params)
-  return apiRequest(`/notes${search.size ? `?${search}` : ''}`)
+  return apiRequest(`/notes${search.size ? `?${search}` : ''}`, options)
 }
 
 export function createNote(payload) {
@@ -79,9 +87,9 @@ export function deleteNote(noteId) {
   })
 }
 
-export function listHighlights(params = {}) {
+export function listHighlights(params = {}, options = {}) {
   const search = new URLSearchParams(params)
-  return apiRequest(`/highlights${search.size ? `?${search}` : ''}`)
+  return apiRequest(`/highlights${search.size ? `?${search}` : ''}`, options)
 }
 
 export function createHighlight(payload) {
@@ -97,8 +105,8 @@ export function deleteHighlight(highlightId) {
   })
 }
 
-export function listFeedback() {
-  return apiRequest('/feedback')
+export function listFeedback(options = {}) {
+  return apiRequest('/feedback', options)
 }
 
 export function createFeedback(payload) {
@@ -108,8 +116,8 @@ export function createFeedback(payload) {
   })
 }
 
-export function getFeedback(feedbackId) {
-  return apiRequest(`/feedback/${feedbackId}`)
+export function getFeedback(feedbackId, options = {}) {
+  return apiRequest(`/feedback/${feedbackId}`, options)
 }
 
 export function replyFeedback(feedbackId, message) {

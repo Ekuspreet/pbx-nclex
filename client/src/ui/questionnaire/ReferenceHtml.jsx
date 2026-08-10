@@ -1,8 +1,11 @@
-function ReferenceHtml({ html, className = '', as: Tag = 'div' }) {
+import { sanitizeReferenceHtml } from './sanitizeReferenceHtml.js'
+
+function ReferenceHtml({ html, className = '', as: Tag = 'div', ...props }) {
   return (
     <Tag
+      {...props}
       className={`reference-html ${className}`}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizeReferenceHtml(html) }}
     />
   )
 }

@@ -1,108 +1,107 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { getTestResult } from '../services/studyAdapter.js'
-import ExplanationPanel from '../ui/questionnaire/ExplanationPanel.jsx'
-import ReferenceHtml from '../ui/questionnaire/ReferenceHtml.jsx'
+import { queryKeys } from '../services/queryKeys.js'
 
-function LoadingState() {
-  return (
-    <main className="grid min-h-screen place-items-center bg-base-100" data-theme="nord">
-      <span className="loading loading-spinner loading-lg text-primary" />
-    </main>
-  )
+function formatDuration(ms) {
+  const seconds = Math.max(0, Math.round((ms || 0) / 1000))
+  if (seconds < 60) return `${seconds} sec`
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
 }
 
-function BreakdownTable({ rows = [], title }) {
+function LoadingState() {
+  return <main className="grid min-h-screen place-items-center bg-[#f8fafc]" data-theme="nord"><span className="loading loading-spinner loading-lg text-primary" /></main>
+}
+
+function StatusIcon({ item }) {
+  if (item.isCorrect) return <span className="text-xl font-black text-emerald-500">✓</span>
+  if (item.answered) return <span className="text-xl font-black text-red-500">×</span>
+  return <span className="text-xl font-black text-blue-500">−</span>
+}
+
+function CountRow({ className, count, label }) {
   return (
-    <section className="surface-raised rounded-lg border p-4">
-      <h2 className="text-h3 mb-3">{title}</h2>
-      <div className="overflow-x-auto">
-        <table className="table table-sm">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Total</th>
-              <th>Attempted</th>
-              <th>Correct</th>
-              <th>Incorrect</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.key}>
-                <td>{row.label}</td>
-                <td>{row.total}</td>
-                <td>{row.attempted ?? row.total - row.unanswered}</td>
-                <td>{row.correct}</td>
-                <td>{row.incorrect}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-[15px] text-slate-700">
+      <span>{label}</span><span className={`grid size-[30px] place-items-center rounded-full text-sm font-bold ${className}`}>{count}</span>
+    </div>
   )
 }
 
 function TestResultPage() {
   const { testId } = useParams()
-  const [state, setState] = useState({ loading: true, error: '', data: null })
+  const resultQuery = useQuery({ queryKey: queryKeys.testResult(testId), queryFn: ({ signal }) => getTestResult(testId, { signal }) })
 
-  useEffect(() => {
-    getTestResult(testId)
-      .then((data) => setState({ loading: false, error: '', data }))
-      .catch((error) => setState({ loading: false, error: error.message, data: null }))
-  }, [testId])
+  if (resultQuery.isPending) return <LoadingState />
+  if (resultQuery.isError) return <main className="grid min-h-screen place-items-center bg-[#f8fafc] p-6" data-theme="nord"><div className="alert alert-error max-w-xl"><span>{resultQuery.error.message}</span></div></main>
 
-  if (state.loading) return <LoadingState />
-  if (state.error) {
-    return <main className="grid min-h-screen place-items-center bg-base-100 p-6" data-theme="nord"><div className="alert alert-error max-w-xl"><span>{state.error}</span></div></main>
-  }
-
-  const { scoreSummary } = state.data
-  const attempted = scoreSummary.answered ?? scoreSummary.total - scoreSummary.unanswered
+  const { questions = [], scoreSummary, test } = resultQuery.data
+  const total = Number(scoreSummary.total || questions.length || 0)
+  const correct = Number(scoreSummary.correct || 0)
+  const incorrect = Number(scoreSummary.incorrect || 0)
+  const omitted = Number(scoreSummary.unanswered ?? Math.max(0, total - correct - incorrect))
+  const percentage = total > 0 ? Math.round((correct / total) * 100) : 0
+  const averageMs = total > 0 ? (test.elapsedMs || 0) / total : 0
 
   return (
-    <main className="surface-muted min-h-screen py-10" data-theme="nord">
-      <section className="container-page grid gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-kicker">Results</p>
-            <h1 className="text-h2">Test Result</h1>
-          </div>
-          <Link className="btn btn-primary" to="/home">Dashboard</Link>
-        </div>
+    <main className="min-h-screen bg-[#f8fafc] px-5 py-10 text-slate-800 sm:px-10 lg:px-16" data-theme="nord">
+      <div className="mx-auto max-w-[1465px]">
+        <header className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Test Results</h1>
+          <Link className="btn btn-primary h-[42px] w-[130px]" to="/home">Dashboard</Link>
+        </header>
+        <div className="mb-10 mt-8 border-b border-slate-200" />
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Total</p><strong className="text-h3">{scoreSummary.total}</strong></div></article>
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Attempted</p><strong className="text-h3">{attempted}</strong></div></article>
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Correct</p><strong className="text-h3">{scoreSummary.correct}</strong></div></article>
-          <article className="card surface-raised"><div className="card-body"><p className="text-caption text-muted">Incorrect</p><strong className="text-h3">{scoreSummary.incorrect}</strong></div></article>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-2">
-          <BreakdownTable rows={scoreSummary.subjects} title="Subject Performance" />
-          <BreakdownTable rows={scoreSummary.systems} title="System Performance" />
-        </section>
-
-        <section className="grid gap-4">
-          <h2 className="text-h3">Question Review</h2>
-          {state.data.questions.map((item, index) => (
-            <article className="surface-raised rounded-lg border p-4" key={item.id}>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-black">Question {index + 1} · QID {item.question.questionId}</h3>
-                <span className={`badge ${item.isCorrect ? 'badge-success' : item.answered ? 'badge-error' : 'badge-warning'}`}>
-                  {item.isCorrect ? 'Correct' : item.answered ? 'Incorrect' : 'Unanswered'}
-                </span>
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 lg:p-10">
+          <div className="grid gap-10 lg:grid-cols-[2fr_1fr_1.5fr]">
+            <div>
+              <div className="flex items-center gap-6 text-[15px] font-semibold text-slate-600"><span>Points Scored</span><strong className="text-lg text-slate-900">{correct} / {total}</strong></div>
+              <div className="relative mt-8 h-[14px] max-w-[280px] rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" style={{ width: `${percentage}%` }} />
+                <div className="absolute -top-7 flex -translate-x-1/2 flex-col items-center" style={{ left: `${percentage}%` }}>
+                  <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-extrabold text-emerald-500">{percentage}%</span>
+                  <span className="mt-0.5 border-x-[6px] border-t-[7px] border-x-transparent border-t-emerald-500" />
+                </div>
               </div>
-              <ReferenceHtml html={item.question.questionText} />
-              <p className="mt-3 text-sm font-bold">Your answer: {String(item.answer ?? '-')}</p>
-              <p className="text-sm font-bold">Correct answer: {item.question.correctAnswer}</p>
-              <ExplanationPanel className="mt-4" html={item.question.explanationText} />
-            </article>
-          ))}
+            </div>
+
+            <div className="grid gap-4">
+              <CountRow className="bg-emerald-100 text-emerald-500" count={correct} label="Correct" />
+              <CountRow className="bg-red-100 text-red-500" count={incorrect} label="Incorrect" />
+              <CountRow className="bg-blue-100 text-blue-500" count={omitted} label="Omitted" />
+            </div>
+
+            <div className="grid content-start gap-4">
+              <h2 className="text-lg font-bold text-slate-950">Session Details</h2>
+              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 text-sm text-slate-600"><span>Test Id</span><span className="max-w-[220px] truncate rounded-full border border-slate-200 bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-700" title={test.id}>{test.id}</span></div>
+              <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 text-sm text-slate-600"><span>Mode</span><div className="flex gap-2"><span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-700">{test.tutorMode ? 'Tutored' : 'Untutored'}</span><span className="rounded-full border border-slate-200 bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-700">{test.timed ? 'Timed' : 'Untimed'}</span></div></div>
+            </div>
+          </div>
+
+          <h2 className="mb-4 mt-14 text-lg font-bold text-slate-950">Question Breakdown</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-left">
+              <thead><tr className="text-xs font-bold uppercase tracking-wide text-slate-600"><th className="w-12 border-b-2 border-slate-200 p-4" /><th className="border-b-2 border-slate-200 p-4">ID</th><th className="border-b-2 border-slate-200 p-4">Subjects</th><th className="border-b-2 border-slate-200 p-4">Systems</th><th className="border-b-2 border-slate-200 p-4">Topics</th><th className="border-b-2 border-slate-200 p-4">Client Needs</th><th className="border-b-2 border-slate-200 p-4">Scored / Max</th><th className="border-b-2 border-slate-200 p-4">Time</th><th className="border-b-2 border-slate-200 p-4">Avg. Time</th><th className="border-b-2 border-slate-200 p-4" /></tr></thead>
+              <tbody>
+                {questions.map((item, index) => (
+                  <tr className="text-sm font-medium text-slate-700 hover:bg-slate-50" key={item.id}>
+                    <td className="border-b border-slate-100 p-4 text-center"><StatusIcon item={item} /></td>
+                    <td className="border-b border-slate-100 p-4">{item.question.questionId}</td>
+                    <td className="border-b border-slate-100 p-4">{item.question.subject || '—'}</td>
+                    <td className="border-b border-slate-100 p-4">{item.question.system || '—'}</td>
+                    <td className="border-b border-slate-100 p-4">{item.question.topic || '—'}</td>
+                    <td className="border-b border-slate-100 p-4">{item.question.title || '—'}</td>
+                    <td className="border-b border-slate-100 p-4">{item.isCorrect ? 1 : 0} / 1</td>
+                    <td className="border-b border-slate-100 p-4">—</td>
+                    <td className="border-b border-slate-100 p-4">{formatDuration(averageMs)}</td>
+                    <td className="border-b border-slate-100 p-4 text-right"><Link className="px-3 text-xl text-slate-400 hover:text-primary" to={`/tests/${testId}/review`} state={{ initialQuestion: index }} aria-label={`Review question ${index + 1}`}>›</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
-      </section>
+        <footer className="py-16 text-center text-sm text-slate-400">Copyright © PBX Nursing. All rights reserved.</footer>
+      </div>
     </main>
   )
 }

@@ -71,7 +71,7 @@ function LandingHero({ hero }) {
         <div className="grid w-full items-center gap-10 py-24 lg:grid-cols-[minmax(0,1fr)_25rem]">
           <motion.div className="container-readable grid gap-5" {...heroIntro}>
             <p className="text-kicker text-inverse-muted">{hero.eyebrow}</p>
-            <h1 className="text-h1 text-inverse">{hero.title}</h1>
+            <h1 className="text-h2 whitespace-pre-line text-inverse">{hero.title}</h1>
             <dl className="grid gap-3 pt-4 text-neutral-content sm:grid-cols-3">
               {hero.metrics.map((metric, index) => (
                 <motion.div
