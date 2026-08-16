@@ -16,6 +16,7 @@ const testQuestions = pgTable(
         visited: boolean('visited').default(false).notNull(),
         answered: boolean('answered').default(false).notNull(),
         markedForReview: boolean('marked_for_review').default(false).notNull(),
+        timeSpentMs: integer('time_spent_ms').default(0).notNull(),
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     },

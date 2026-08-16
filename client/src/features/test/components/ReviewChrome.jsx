@@ -47,12 +47,13 @@ export function ReviewNavbar({ onFullscreen, onSetTextSize, onTheme, textSize })
   )
 }
 
-export function ReviewBottomControls({ canNext = false, canPrevious = false, onClose, onNext, onPrevious }) {
+export function ReviewBottomControls({ canNext = false, canPrevious = false, onClose, onNavigator, onNext, onPrevious }) {
   return (
     <footer className="flex min-h-10 shrink-0 justify-between bg-test-bar px-[14px] text-[17px] font-bold text-test-bar-content">
       <button type="button" className="flex min-h-10 items-center gap-1 px-3 hover:text-test-bar-hover" onClick={onClose}><span className="material-symbols-outlined !text-[18px]">arrow_back</span> Exit Review</button>
       <div className="flex items-stretch justify-end">
         <button type="button" className="flex min-h-10 items-center gap-1 px-3 hover:text-test-bar-hover disabled:opacity-40" disabled={!canPrevious} onClick={onPrevious}><span className="material-symbols-outlined !text-[18px]">arrow_back</span> Previous</button>
+        {onNavigator ? <button type="button" className="flex min-h-10 items-center gap-1 border-l-2 border-test-bar-content px-3 hover:text-test-bar-hover" onClick={onNavigator}><span className="material-symbols-outlined !text-[18px]">search</span> Navigator</button> : null}
         <button type="button" className="flex min-h-10 items-center gap-1 border-l-2 border-test-bar-content px-3 hover:text-test-bar-hover disabled:opacity-40" disabled={!canNext} onClick={onNext}>Next <span className="material-symbols-outlined !text-[18px]">arrow_forward</span></button>
       </div>
     </footer>

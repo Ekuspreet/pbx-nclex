@@ -43,6 +43,7 @@ function NotebookNote({ highlights, note, onAddHighlight, onDeleteHighlight, onD
   const [selection, setSelection] = useState(null)
   const region = `note:${note.id}`
   const html = applyHighlightsToHtml(escapeHtml(note.content), highlights, region)
+  const canHighlight = Boolean(note.questionId && onAddHighlight && onDeleteHighlight)
 
   const captureSelection = () => {
     const activeSelection = window.getSelection()
@@ -74,8 +75,8 @@ function NotebookNote({ highlights, note, onAddHighlight, onDeleteHighlight, onD
 
   return (
     <div className="relative grid min-h-8 grid-cols-[70px_1fr_auto] text-sm leading-8">
-      <strong className="px-1">{note.question?.questionId || '—'}</strong>
-      <p ref={contentRef} className="break-words px-4 leading-8" onMouseUp={onAddHighlight ? captureSelection : undefined} dangerouslySetInnerHTML={{ __html: html }} />
+      <strong className="px-1">{note.question?.questionId || ''}</strong>
+      <p ref={contentRef} className="break-words px-4 leading-8" onMouseUp={canHighlight ? captureSelection : undefined} dangerouslySetInnerHTML={{ __html: html }} />
       {onDeleteNote ? <button className="btn btn-ghost btn-sm btn-square my-0.5 text-error" disabled={deletingNoteId === note.id} type="button" aria-label="Delete note" onClick={() => onDeleteNote(note.id)}>{deletingNoteId === note.id ? <span className="loading loading-spinner loading-xs" /> : <span className="material-symbols-outlined !text-[18px]">delete</span>}</button> : null}
       {selection ? (
         <div className="fixed z-[60] -translate-y-full rounded-md border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-xl" style={{ left: selection.left, top: selection.top }} onMouseDown={(event) => event.preventDefault()}>

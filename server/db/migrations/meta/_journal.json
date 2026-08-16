@@ -8,6 +8,20 @@
       "when": 1785933668908,
       "tag": "0000_natural_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786399781798,
+      "tag": "0001_organic_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786728014738,
+      "tag": "0002_sad_peter_parker",
+      "breakpoints": true
     }
   ]
 }

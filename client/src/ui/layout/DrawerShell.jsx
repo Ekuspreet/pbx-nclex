@@ -65,13 +65,13 @@ function getInitials(name = '') {
 
 export function AccountIdentity({ badge, caption, name, to }) {
   const content = (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
       <div className="avatar avatar-placeholder shrink-0" aria-label={`${name} profile`}>
-        <div className="w-11 rounded-full bg-primary text-primary-content">
+        <div className="w-10 rounded-full bg-primary text-primary-content sm:w-11">
           <span className="text-sm font-black">{getInitials(name)}</span>
         </div>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="hidden min-w-0 flex-1 sm:block">
         <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-sm font-black">{name}</p>
           {badge ? <span className={`badge badge-sm shrink-0 ${badge.className || 'badge-outline'}`}>{badge.label}</span> : null}
@@ -84,10 +84,10 @@ export function AccountIdentity({ badge, caption, name, to }) {
   return to ? <Link className="rounded-full" to={to}>{content}</Link> : content
 }
 
-function DrawerSidebar({ account, navAriaLabel, navGroups, onClose, user }) {
+function DrawerSidebar({ account, desktop = false, navAriaLabel, navGroups, onClose, user }) {
   const name = user?.name || 'PBX learner'
   return (
-    <aside className="flex min-h-full w-65 flex-col bg-neutral px-5 py-8 text-neutral-content shadow-lg">
+    <aside className={`flex min-h-full w-65 flex-col bg-neutral px-5 py-8 text-neutral-content shadow-lg ${desktop ? 'fixed inset-y-0 left-0 z-40 h-dvh' : ''}`}>
       <div className="relative mb-5 text-center">
 
         <BrandLogo brand={
@@ -101,9 +101,6 @@ function DrawerSidebar({ account, navAriaLabel, navGroups, onClose, user }) {
         <p className="text-xs text-neutral-content/60">Question Bank</p>
         <p className="mt-5 text-sm font-bold uppercase">{name}</p>
         <p className="text-xs text-neutral-content/60">Nursing learner</p>
-        <button className="btn btn-ghost btn-square absolute right-3 lg:hidden" type="button" onClick={onClose} aria-label="Close app navigation">
-          <span className="material-symbols-outlined">close</span>
-        </button>
       </div>
 
       <nav className="min-h-0 w-full flex-1 overflow-y-auto" aria-label={navAriaLabel}>
@@ -126,14 +123,14 @@ function DrawerSidebar({ account, navAriaLabel, navGroups, onClose, user }) {
 function DrawerHeader({ accountIdentity, onOpenSidebar, title }) {
   return (
     <header className={`surface-sticky ${title ? '' : 'lg:hidden'}`}>
-      <div className="navbar min-h-20 px-4 md:px-10">
-        <div className="navbar-start gap-2">
+      <div className="navbar min-h-20 gap-2 px-4 md:px-10">
+        <div className="navbar-start min-w-0 gap-2">
           <button className="btn btn-ghost btn-square lg:hidden" type="button" onClick={onOpenSidebar} aria-label="Open app navigation">
             <span className="material-symbols-outlined">menu</span>
           </button>
           {title ? <h1 className="truncate text-h3">{title}</h1> : null}
         </div>
-        <div className="navbar-end">
+        <div className="navbar-end shrink-0">
           {accountIdentity}
         </div>
       </div>
@@ -145,20 +142,31 @@ function DrawerShell({ account, accountIdentity, brand, children, drawerId = 'ap
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="drawer lg:drawer-open surface-page min-h-screen" data-theme="nord">
+    <div className="drawer surface-page min-h-screen overflow-x-hidden" data-theme="nord">
       <input id={drawerId} type="checkbox" className="drawer-toggle" checked={sidebarOpen} onChange={(event) => setSidebarOpen(event.target.checked)} />
 
-      <div className="drawer-content flex min-h-screen flex-col">
+      <div className="drawer-content flex min-h-screen min-w-0 flex-col lg:pl-65">
         <DrawerHeader accountIdentity={accountIdentity} onOpenSidebar={() => setSidebarOpen(true)} title={title} />
 
-        <main className={`${mainClassName} flex-1`}>
-          <section className="grid min-h-[calc(100vh-5rem)] w-full content-start gap-8 px-5 py-10 md:px-10 md:py-12 lg:px-16 lg:py-16">
+        <main className={`${mainClassName} min-w-0 flex-1`}>
+          <section className="grid min-h-[calc(100vh-5rem)] min-w-0 w-full content-start gap-8 px-5 py-10 md:px-10 md:py-12 lg:px-16 lg:py-16 [&>*]:min-w-0">
             {children}
           </section>
         </main>
       </div>
 
-      <div className="drawer-side z-50 lg:z-0">
+      <div className="hidden lg:block">
+        <DrawerSidebar
+          account={account}
+          desktop
+          navAriaLabel={navAriaLabel}
+          navGroups={navGroups}
+          onClose={() => {}}
+          user={user}
+        />
+      </div>
+
+      <div className="drawer-side z-50 lg:hidden">
         <label htmlFor={drawerId} aria-label="Close app navigation" className="drawer-overlay lg:hidden" />
         <DrawerSidebar
           account={account}

@@ -52,9 +52,10 @@ export function updateTestTimer(testId, payload) {
   })
 }
 
-export function submitTest(testId) {
+export function submitTest(testId, payload = {}) {
   return apiRequest(`/tests/${testId}/submit`, {
     method: 'POST',
+    body: payload,
   })
 }
 

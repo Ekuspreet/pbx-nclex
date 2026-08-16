@@ -29,6 +29,11 @@ async function attachQuestionContext(rows) {
     const result = [];
 
     for (const row of rows) {
+        if (!row.questionId) {
+            result.push({ ...row, question: null });
+            continue;
+        }
+
         const [question] = await db
             .select()
             .from(questions)
@@ -87,13 +92,24 @@ async function createNote(userId, payload, planName = 'free') {
         if ((row?.count || 0) >= limit) throw createHttpError(403, `The Free plan allows ${limit} notes. Upgrade to Plus for unlimited notes.`);
     }
 
+    let questionId = payload.questionId || null;
+    if (payload.questionReference) {
+        const [question] = await db
+            .select({ id: questions.id })
+            .from(questions)
+            .where(eq(questions.questionId, payload.questionReference))
+            .limit(1);
+        if (!question) throw createNotFoundError('Question');
+        questionId = question.id;
+    }
+
     const now = new Date();
     const [note] = await db
         .insert(notes)
         .values({
             userId,
             testId: payload.testId || null,
-            questionId: payload.questionId,
+            questionId,
             title: payload.title,
             content: payload.content,
             createdAt: now,

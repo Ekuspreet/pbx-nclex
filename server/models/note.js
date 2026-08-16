@@ -10,7 +10,7 @@ const notes = pgTable(
         id: uuid('id').defaultRandom().primaryKey(),
         userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
         testId: uuid('test_id').references(() => tests.id, { onDelete: 'cascade' }),
-        questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
+        questionId: uuid('question_id').references(() => questions.id, { onDelete: 'cascade' }),
         title: text('title').notNull(),
         content: text('content').notNull(),
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

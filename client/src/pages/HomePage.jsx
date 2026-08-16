@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import { brand } from '../content/landing/index.js'
 import {
   createHighlight,
+  createNote,
   createTest,
   deleteHighlight,
   getDashboard,
@@ -171,9 +173,9 @@ function PerformanceOverview({ rows, total }) {
   ]
 
   return (
-    <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-8 md:px-10 md:py-9" aria-label="Performance overview">
+    <section className="rounded-2xl border border-base-300 bg-base-100 px-4 py-8 sm:px-6 md:px-10 md:py-9" aria-label="Performance overview">
       <div className="grid items-center gap-8 lg:grid-cols-[340px_400px] lg:gap-10">
-        <svg className="mx-auto size-64 overflow-visible md:size-72" role="img" viewBox="0 0 220 220" aria-label="Question performance rings">
+        <svg className="mx-auto size-52 overflow-visible sm:size-64 md:size-72" role="img" viewBox="0 0 220 220" aria-label="Question performance rings">
           <g transform="rotate(-90 110 110)">
             {ringRows.map((row, index) => (
               <circle
@@ -520,8 +522,8 @@ function CreateTestPageContent() {
         onToggle={(key) => toggle('systems', key)}
       />
 
-      <footer className="surface-sticky mt-2 flex flex-col gap-5 border-0 px-6 py-5 sm:flex-row sm:items-center sm:justify-between md:px-8">
-        <label className="form-control !grid grid-cols-[auto_5rem_auto] items-center gap-x-3">
+      <footer className="surface-sticky mt-2 flex flex-col gap-5 border-0 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:px-8">
+        <label className="form-control !grid min-w-0 grid-cols-1 items-center gap-2 sm:grid-cols-[auto_5rem_auto] sm:gap-x-3">
           <span className="label-text whitespace-nowrap font-bold">No. of Questions</span>
           <input
             className="input input-bordered input-sm w-full text-center"
@@ -531,7 +533,7 @@ function CreateTestPageContent() {
             value={form.questionCount}
             onChange={(event) => setForm({ ...form, questionCount: event.target.value })}
           />
-          <span className="flex items-baseline gap-1.5 whitespace-nowrap text-caption text-muted">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
+          <span className="flex items-baseline gap-1.5 text-caption text-muted sm:whitespace-nowrap">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
         </label>
         <button className="btn btn-primary min-w-40" disabled={createTestMutation.isPending || maxQuestions === 0 || asCount(form.questionCount) > maxQuestions} type="submit">
           {createTestMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : null}
@@ -592,8 +594,11 @@ function FilterPicker({ getCount = (option) => option.totalQuestions, label, opt
 function NotesPageContent() {
   const queryClient = useQueryClient()
   const [openNotebook, setOpenNotebook] = useState(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [questionReference, setQuestionReference] = useState('')
   const notesQuery = useQuery({ queryKey: queryKeys.notes(), queryFn: ({ signal }) => listNotes({}, { signal }) })
   const highlightsQuery = useQuery({ queryKey: queryKeys.highlights(), queryFn: ({ signal }) => listHighlights({}, { signal }) })
+  const createNoteMutation = useMutation({ mutationFn: createNote })
   const createHighlightMutation = useMutation({ mutationFn: createHighlight })
   const deleteHighlightMutation = useMutation({ mutationFn: deleteHighlight })
   if (notesQuery.isPending || highlightsQuery.isPending) return <LoadingState />
@@ -607,6 +612,25 @@ function NotesPageContent() {
     groups.set(key, current)
     return groups
   }, new Map()).values()).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+  const saveNote = async (event) => {
+    event.preventDefault()
+    const content = noteDraft.trim()
+    if (!content) return
+
+    try {
+      const reference = questionReference.trim()
+      const payload = await createNoteMutation.mutateAsync({
+        title: reference ? `QID ${reference}` : 'Standalone note',
+        content,
+        ...(reference ? { questionReference: Number(reference) } : {}),
+      })
+      queryClient.setQueryData(queryKeys.notes(), (current) => ({ ...current, notes: [payload.note, ...(current?.notes || [])] }))
+      await queryClient.invalidateQueries({ queryKey: ['notes'] })
+      setNoteDraft('')
+      setQuestionReference('')
+    } catch { /* surfaced by the mutation below */ }
+  }
 
   const addNoteHighlight = async (note, selector) => {
     const payload = await createHighlightMutation.mutateAsync({ testId: note.testId, questionId: note.questionId, selector, color: 'yellow' })
@@ -623,14 +647,31 @@ function NotesPageContent() {
 
   return (
     <>
-      <section className="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+      <form className="mb-6 rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8" onSubmit={saveNote}>
+        <h2 className="text-xl font-bold">Add a note</h2>
+        <p className="mt-1 text-sm text-base-content/60">The question ID is optional.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_12rem_auto] md:items-end">
+          <label className="form-control">
+            <span className="label-text mb-2 font-medium">Note</span>
+            <textarea className="textarea textarea-bordered min-h-24" disabled={createNoteMutation.isPending} maxLength={20000} placeholder="Write a note…" required value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} />
+          </label>
+          <label className="form-control">
+            <span className="label-text mb-2 font-medium">Question ID (optional)</span>
+            <input className="input input-bordered w-full" disabled={createNoteMutation.isPending} inputMode="numeric" min="1" placeholder="e.g. 1234" step="1" type="number" value={questionReference} onChange={(event) => setQuestionReference(event.target.value)} />
+          </label>
+          <button className="btn btn-primary" disabled={createNoteMutation.isPending || !noteDraft.trim()} type="submit">{createNoteMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : <span className="material-symbols-outlined">add</span>}Add note</button>
+        </div>
+        {createNoteMutation.isError ? <div className="alert alert-error mt-4"><span>{createNoteMutation.error.message}</span></div> : null}
+      </form>
+      <section className="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+        <div className="overflow-x-auto">
         <table className="table">
           <thead><tr><th className="w-28">Serial No.</th><th>Test ID</th><th>Notes</th><th>Updated</th><th /></tr></thead>
           <tbody>
             {notebooks.map((notebook, index) => (
               <tr key={notebook.testId || 'unassigned'}>
                 <td className="font-bold">{index + 1}</td>
-                <td className="font-mono">{notebook.testId || 'Legacy notes'}</td>
+                <td className="font-mono">{notebook.testId || 'Standalone notes'}</td>
                 <td>{notebook.notes.length}</td>
                 <td>{new Date(notebook.updatedAt).toLocaleString()}</td>
                 <td className="text-right"><button className="btn btn-primary" type="button" onClick={() => setOpenNotebook(notebook)}>Open Notebook</button></td>
@@ -639,6 +680,7 @@ function NotesPageContent() {
             {notebooks.length === 0 ? <tr><td className="py-10 text-center text-base-content/60" colSpan="5">No test notebooks yet.</td></tr> : null}
           </tbody>
         </table>
+        </div>
       </section>
       {openNotebook ? <NotebookViewer highlights={highlightsQuery.data?.highlights || []} notes={openNotebook.notes} onAddHighlight={addNoteHighlight} onClose={() => setOpenNotebook(null)} onDeleteHighlight={removeNoteHighlights} /> : null}
     </>
@@ -667,7 +709,7 @@ function RecordsTable({ kind, loader, remover }) {
   const rows = recordsQuery.data?.[kind] || []
 
   return (
-    <section className="surface-raised rounded-lg border p-4">
+    <section className="surface-raised min-w-0 rounded-lg border p-4">
       <div className="overflow-x-auto">
         <table className="table">
           <thead>
@@ -829,7 +871,7 @@ function FeedbackPageContent() {
 
   return (
     <div className="grid gap-6">
-      <section className="surface-raised rounded-lg border p-4">
+      <section className="surface-raised min-w-0 rounded-lg border p-4">
         <div className="mb-4">
           <h2 className="text-h3">Feedback Threads</h2>
           <p className="text-caption text-muted">Question feedback is submitted from the exam window.</p>
@@ -924,56 +966,61 @@ function TestsPageContent() {
   )
 }
 
-function TestPerformanceTooltip({ scoreSummary, total }) {
+function getTestPerformanceRows(scoreSummary, total) {
   const totalQuestions = Math.max(0, asCount(total))
   const correct = asCount(scoreSummary?.correct)
   const incorrect = asCount(scoreSummary?.incorrect)
   const omitted = asCount(scoreSummary?.unanswered)
-  const used = Math.min(totalQuestions, asCount(scoreSummary?.total))
   const percent = (value) => totalQuestions > 0 ? Math.round((value / totalQuestions) * 100) : 0
-  const rows = [
-    { label: 'Unused Questions', value: percent(Math.max(totalQuestions - used, 0)), color: '#94a3b8' },
-    { label: 'Correct', value: percent(correct), color: '#10b981' },
-    { label: 'Incorrect', value: percent(incorrect), color: '#ef4444' },
-    { label: 'Partially Incorrect', value: 0, color: '#f59e0b' },
-    { label: 'Omitted', value: percent(omitted), color: '#475569' },
-    { label: 'Used Questions', value: percent(used), color: '#3b82f6' },
+  return [
+    { label: 'Correct', value: percent(correct), color: 'text-success', badge: 'bg-success' },
+    { label: 'Incorrect', value: percent(incorrect), color: 'text-error', badge: 'bg-error' },
+    { label: 'P. Incorrect', value: percent(asCount(scoreSummary?.partiallyIncorrect)), color: 'text-warning', badge: 'bg-warning' },
+    { label: 'Omitted', value: percent(omitted), color: 'text-neutral/75', badge: 'bg-neutral/75' },
   ]
-  const radii = [43, 36, 29, 22, 15, 8]
+}
+
+function TestPerformanceRings({ animated = false, className = 'size-[110px]', rows }) {
+  const radii = [43, 34, 25, 16]
 
   return (
-    <div className="pointer-events-none invisible absolute bottom-[calc(100%+14px)] left-0 z-50 flex w-[360px] translate-y-1.5 scale-95 items-center gap-6 rounded-3xl border border-white/90 bg-white/80 p-6 opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:visible group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100">
-      <svg className="size-[110px] shrink-0 -rotate-90 overflow-visible" aria-hidden="true" viewBox="0 0 100 100">
-        {rows.map((row, index) => (
-          <circle
-            className="circular-progress-trace"
-            cx="50"
-            cy="50"
-            fill="none"
-            key={row.label}
-            pathLength="100"
-            r={radii[index]}
-            stroke={row.color}
-            strokeDasharray="100"
-            strokeLinecap="round"
-            strokeWidth="3.5"
-            style={{ '--progress-offset': 100 - row.value, '--trace-delay': `${index * PERFORMANCE_RING_DELAY}ms` }}
-          />
-        ))}
-      </svg>
+    <svg className={`${className} shrink-0 -rotate-90 overflow-visible`} aria-hidden="true" viewBox="0 0 100 100">
+      {rows.map((row, index) => (
+        <circle
+          className={`${animated ? 'circular-progress-trace' : ''} ${row.color}`}
+          cx="50"
+          cy="50"
+          fill="none"
+          key={row.label}
+          pathLength="100"
+          r={radii[index]}
+          stroke="currentColor"
+          strokeDasharray="100"
+          strokeDashoffset={animated ? undefined : 100 - row.value}
+          strokeLinecap="round"
+          strokeWidth="3.5"
+          style={animated ? { '--progress-offset': 100 - row.value, '--trace-delay': `${index * PERFORMANCE_RING_DELAY}ms` } : undefined}
+        />
+      ))}
+    </svg>
+  )
+}
+
+function TestPerformanceTooltip({ position, scoreSummary, total }) {
+  const rows = getTestPerformanceRows(scoreSummary, total)
+
+  return (
+    <div className="pointer-events-none fixed z-50 flex w-90 max-w-[calc(100vw-2rem)] items-center gap-6 rounded-3xl border border-base-300 bg-base-100/95 p-6 text-base-content shadow-2xl backdrop-blur-xl" data-theme="nord" style={position}>
+      <TestPerformanceRings animated rows={rows} />
       <div className="min-w-0 flex-1">
-        <h3 className="mb-2 text-sm font-bold text-slate-900">Performance Overview</h3>
+        <h3 className="mb-2 text-sm font-bold text-base-content">Performance Overview</h3>
         <dl className="grid gap-1.5">
           {rows.map((row, index) => (
-            <div className="flex items-center justify-between gap-3 text-xs text-slate-600" key={row.label}>
+            <div className="flex items-center justify-between gap-3 text-xs text-base-content/70" key={row.label}>
               <dt>{row.label}</dt>
-              <dd className="min-w-8 rounded-full px-2 py-0.5 text-center text-[11px] font-bold text-white" style={{ backgroundColor: row.color }}><AnimatedNumber delay={index * PERFORMANCE_RING_DELAY} value={row.value} />%</dd>
+              <dd className={`min-w-8 rounded-full px-2 py-0.5 text-center text-[11px] font-bold text-white ${row.badge}`}><AnimatedNumber delay={index * PERFORMANCE_RING_DELAY} value={row.value} />%</dd>
             </div>
           ))}
-          <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 text-xs font-bold text-slate-900">
-            <dt>Total Questions</dt>
-            <dd className="min-w-8 rounded-full bg-slate-900 px-2 py-0.5 text-center text-[11px] text-white"><AnimatedNumber delay={rows.length * PERFORMANCE_RING_DELAY} value={totalQuestions} /></dd>
-          </div>
         </dl>
       </div>
     </div>
@@ -983,16 +1030,50 @@ function TestPerformanceTooltip({ scoreSummary, total }) {
 function TestScoreRing({ scoreSummary, total, value }) {
   const percentage = Math.min(100, Math.max(0, asCount(value)))
   const [animationKey, setAnimationKey] = useState(0)
+  const [tooltipOpen, setTooltipOpen] = useState(false)
+  const [tooltipPosition, setTooltipPosition] = useState(null)
+  const ringRef = useRef(null)
 
-  const replayDetailsAnimation = () => setAnimationKey((key) => key + 1)
+  const showDetails = () => {
+    setAnimationKey((key) => key + 1)
+    setTooltipOpen(true)
+  }
+
+  useEffect(() => {
+    if (!tooltipOpen) return undefined
+
+    const updatePosition = () => {
+      const bounds = ringRef.current?.getBoundingClientRect()
+      if (!bounds) return
+      const width = Math.min(360, window.innerWidth - 32)
+      const left = Math.min(Math.max(16, bounds.left), window.innerWidth - width - 16)
+      const placeAbove = bounds.top >= 320
+      setTooltipPosition({
+        left,
+        top: placeAbove ? bounds.top - 14 : bounds.bottom + 14,
+        transform: placeAbove ? 'translateY(-100%)' : 'none',
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [tooltipOpen])
 
   return (
     <div
-      className="group relative size-[58px] cursor-pointer overflow-visible outline-none"
+      className="group relative size-[58px] shrink-0 cursor-pointer overflow-visible outline-none"
+      ref={ringRef}
       tabIndex="0"
       aria-label={`${percentage}% scored. Hover or focus for performance overview.`}
-      onFocus={replayDetailsAnimation}
-      onMouseEnter={replayDetailsAnimation}
+      onBlur={() => setTooltipOpen(false)}
+      onFocus={showDetails}
+      onMouseEnter={showDetails}
+      onMouseLeave={() => setTooltipOpen(false)}
     >
       <div className="relative z-10 size-[58px] origin-center transition-transform duration-300 ease-out group-hover:scale-[1.6] group-focus-visible:scale-[1.6]">
         <svg className="size-full -rotate-90 drop-shadow-sm" role="img" viewBox="0 0 58 58" aria-label={`${percentage}% scored`}>
@@ -1013,7 +1094,10 @@ function TestScoreRing({ scoreSummary, total, value }) {
         </svg>
         <span className="absolute inset-0 grid place-items-center text-xs font-bold text-base-content"><AnimatedNumber value={percentage} />%</span>
       </div>
-      <TestPerformanceTooltip key={animationKey} scoreSummary={scoreSummary} total={total} />
+      {tooltipOpen && tooltipPosition ? createPortal(
+        <TestPerformanceTooltip key={animationKey} position={tooltipPosition} scoreSummary={scoreSummary} total={total} />,
+        document.body,
+      ) : null}
     </div>
   )
 }
@@ -1022,9 +1106,55 @@ function TestsTable({ emptyMessage, tests, title, variant }) {
   const isCompleted = variant === 'completed'
 
   return (
-    <section className="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+    <section className="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-4 sm:p-6 md:p-8">
       <h2 className="mb-6 text-xl font-bold text-base-content">{title}</h2>
-      <div className="overflow-x-auto lg:overflow-visible">
+      <div className="grid gap-4 xl:hidden">
+        {tests.map((test) => {
+          const total = asCount(test.questionCount)
+          const correct = asCount(test.scoreSummary?.correct)
+          const outcomes = getTestPerformanceRows(test.scoreSummary, total)
+
+          return (
+            <article className="card min-w-0 border border-base-300 bg-base-100 shadow-sm" key={test.id}>
+              <div className="card-body min-w-0 gap-4 p-4 sm:gap-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-base-content">{new Date(test.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    <p className="mt-1 break-all text-xs text-base-content/60" title={test.id}>{test.id}</p>
+                  </div>
+                  <TestPerformanceRings className="size-24" rows={outcomes} />
+                </div>
+
+                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {outcomes.map((outcome) => (
+                    <div className="min-w-0 rounded-box bg-base-200 p-2.5 sm:p-3" key={outcome.label}>
+                      <dt className="text-xs text-base-content/70">{outcome.label}</dt>
+                      <dd className={`badge mt-2 ${outcome.badge}`}>{outcome.value}%</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <dl className="grid grid-cols-2 gap-4 border-y border-base-300 py-4 text-sm">
+                  <div><dt className="text-base-content/60">Questions</dt><dd className="mt-1 font-bold">{total}</dd></div>
+                  <div><dt className="text-base-content/60">Scored / Max</dt><dd className="mt-1 font-bold">{correct}/{total}</dd></div>
+                  <div className="col-span-2"><dt className="text-base-content/60">Mode</dt><dd className="mt-1 font-bold">{test.tutorMode ? 'Tutored' : 'Untutored'}, {test.timed ? 'timed' : 'untimed'}</dd></div>
+                </dl>
+
+                <div className="card-actions grid grid-cols-2 gap-3">
+                  {isCompleted ? (
+                    <><Link className="btn btn-primary" to={`/tests/${test.id}/result`}>Result</Link><Link className="btn btn-primary" to={`/tests/${test.id}/review`}>Review</Link></>
+                  ) : (
+                    <Link className="btn btn-primary col-span-2" to={`/tests/${test.id}`}>Continue</Link>
+                  )}
+                </div>
+              </div>
+            </article>
+          )
+        })}
+        {tests.length === 0 ? <p className="py-8 text-center text-base-content/60">{emptyMessage}</p> : null}
+      </div>
+
+      <div className="hidden overflow-x-auto xl:block">
         <table className="table min-w-[1050px]">
           <thead>
             <tr className="border-base-300 text-xs uppercase text-base-content/75">

@@ -108,7 +108,6 @@ function App() {
           <Route path="/cancellation-policy" element={<PolicyPage source={cancellationPolicy} />} />
           <Route path="/disclaimer" element={<PolicyPage source={disclaimerPolicy} />} />
           <Route path={`${ADMIN_ROUTE}/*`} element={<AdminApp />} />
-          <Route path="/admin/*" element={<Navigate replace to={ADMIN_ROUTE} />} />
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<AuthPage mode="login" />} />
             <Route path="/signup" element={<AuthPage mode="signup" />} />

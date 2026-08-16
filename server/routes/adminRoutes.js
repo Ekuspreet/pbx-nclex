@@ -8,6 +8,7 @@ const {
     adminLoginSchema,
     feedbackIdParamSchema,
     paginationQuerySchema,
+    questionIdParamSchema,
     replyFeedbackSchema,
     updateFeedbackStatusSchema,
 } = require('../validators');
@@ -20,6 +21,7 @@ router.get('/me', authenticateAdmin, adminController.me);
 router.get('/dashboard', authenticateAdmin, adminController.dashboard);
 router.get('/users', authenticateAdmin, validate({ query: paginationQuerySchema }), adminController.listUsers);
 router.get('/questions', authenticateAdmin, validate({ query: paginationQuerySchema }), adminController.listQuestions);
+router.get('/questions/:questionId', authenticateAdmin, validate({ params: questionIdParamSchema }), adminController.showQuestion);
 router.get('/feedback', authenticateAdmin, validate({ query: paginationQuerySchema }), adminController.listFeedback);
 router.get('/feedback/:feedbackId', authenticateAdmin, validate({ params: feedbackIdParamSchema }), adminController.showFeedback);
 router.post('/feedback/:feedbackId/reply', authenticateAdmin, validate({ params: feedbackIdParamSchema, body: replyFeedbackSchema }), adminController.replyFeedback);

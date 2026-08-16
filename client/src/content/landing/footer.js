@@ -15,5 +15,5 @@ export const footer = {
     },
     { title: 'Company', links: [{ label: 'About Us', href: '/about-us' }] },
   ],
-  copyright: 'Copyright 2026 PBX Nursing. All rights reserved.',
+  copyright: '© 2026 PBX Nursing. All rights reserved. PBX Nursing is not affiliated with any educational institution.',
 }

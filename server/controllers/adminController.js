@@ -3,6 +3,7 @@ const { desc, eq, ilike, or, sql } = require('drizzle-orm');
 const { db, feedbackThreads, questions, users } = require('../db');
 const { env } = require('../env');
 const { adminCookieOptions, loginAdmin } = require('../services/adminAuthService');
+const { createHttpError } = require('../services/httpError');
 const {
     addFeedbackReply,
     getFeedbackThread,
@@ -130,6 +131,22 @@ async function listQuestions(req, res, next) {
     }
 }
 
+async function showQuestion(req, res, next) {
+    try {
+        const [question] = await db
+            .select()
+            .from(questions)
+            .where(eq(questions.id, req.params.questionId))
+            .limit(1);
+
+        if (!question) throw createHttpError(404, 'Question not found.');
+
+        res.status(200).json({ question: toClientQuestion(question) });
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function listFeedback(req, res, next) {
     try {
         const feedback = await listAllFeedback(req.query);
@@ -196,5 +213,6 @@ module.exports = {
     logout,
     me,
     replyFeedback,
+    showQuestion,
     showFeedback,
 };

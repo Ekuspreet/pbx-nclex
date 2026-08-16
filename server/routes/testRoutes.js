@@ -5,6 +5,7 @@ const validate = require('../middleware/validate');
 const {
     createTestSchema,
     saveAnswerSchema,
+    submitTestSchema,
     testIdParamSchema,
     updateQuestionStatusSchema,
     updateTimerSchema,
@@ -18,7 +19,7 @@ router.get('/:testId', validate({ params: testIdParamSchema }), testController.s
 router.patch('/:testId/answers', validate({ params: testIdParamSchema, body: saveAnswerSchema }), testController.answer);
 router.patch('/:testId/status', validate({ params: testIdParamSchema, body: updateQuestionStatusSchema }), testController.status);
 router.patch('/:testId/timer', validate({ params: testIdParamSchema, body: updateTimerSchema }), testController.timer);
-router.post('/:testId/submit', validate({ params: testIdParamSchema }), testController.submit);
+router.post('/:testId/submit', validate({ params: testIdParamSchema, body: submitTestSchema }), testController.submit);
 router.get('/:testId/result', validate({ params: testIdParamSchema }), testController.result);
 router.get('/:testId/review', validate({ params: testIdParamSchema }), testController.result);
 

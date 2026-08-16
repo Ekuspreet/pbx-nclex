@@ -28,14 +28,16 @@ function TestReviewPage() {
     <main className="h-screen overflow-hidden">
       <QuestionReviewScreen
         key={item.id}
-        answerState={{ value: item.answer ?? '', answered: Boolean(item.answered), submitted: true }}
+        answerState={{ value: item.answer ?? '', answered: Boolean(item.answered), submitted: true, timeSpentMs: item.timeSpentMs }}
         canNext={current < questions.length - 1}
         canPrevious={current > 0}
         current={current}
         initialHighlights={questionHighlights}
         question={item.question}
         questionCount={questions.length}
+        questions={questions}
         onClose={() => navigate('/tests')}
+        onJump={setCurrent}
         onNext={() => setCurrent((value) => Math.min(questions.length - 1, value + 1))}
         onPrevious={() => setCurrent((value) => Math.max(0, value - 1))}
       />

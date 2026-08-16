@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { brand } from '../content/landing/index.js'
 import { apiRequest } from '../services/apiClient.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
-import QuestionReviewModal from '../ui/questionnaire/QuestionReviewModal.jsx'
+import QuestionReviewModal, { QuestionReviewScreen } from '../ui/questionnaire/QuestionReviewModal.jsx'
 import { ADMIN_ROUTE } from './adminRoute.js'
 import { queryKeys } from '../services/queryKeys.js'
 
@@ -198,11 +198,15 @@ function PaginationControls({ loading, pagination, rowCount, onLimitChange, onNe
   )
 }
 
-function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPlaceholder, title }) {
-  const [pageRequest, setPageRequest] = useState({ limit: 50, offset: 0 })
-  const [searchDraft, setSearchDraft] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+function DataPage({ columns, endpoint, getPreviewPath, getPreviewQuestion, searchLabel, searchPlaceholder, title }) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const restoredState = location.state?.dataPage?.endpoint === endpoint ? location.state.dataPage : null
+  const [pageRequest, setPageRequest] = useState(() => restoredState?.pageRequest || { limit: 50, offset: 0 })
+  const [searchDraft, setSearchDraft] = useState(() => restoredState?.searchDraft || '')
+  const [searchQuery, setSearchQuery] = useState(() => restoredState?.searchQuery || '')
   const [previewQuestion, setPreviewQuestion] = useState(null)
+  const hasPreview = Boolean(getPreviewPath || getPreviewQuestion)
 
   const params = { ...pageRequest, q: searchQuery || undefined }
   const dataQuery = useQuery({
@@ -298,21 +302,35 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
               <thead>
                 <tr>
                   {columns.map((column) => <th key={column.label}>{column.label}</th>)}
-                  {getPreviewQuestion ? <th /> : null}
+                  {hasPreview ? <th /> : null}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
                     {columns.map((column) => <td key={column.label}>{column.render(row)}</td>)}
-                    {getPreviewQuestion ? (
+                    {hasPreview ? (
                       <td className="text-right">
                         <button
                           className="btn btn-ghost btn-xs"
                           type="button"
-                          disabled={!getPreviewQuestion(row)}
+                          disabled={!getPreviewPath?.(row) && !getPreviewQuestion?.(row)}
                           title="Preview question"
-                          onClick={() => setPreviewQuestion(getPreviewQuestion(row))}
+                          onClick={() => {
+                            const question = getPreviewQuestion?.(row) || row
+                            const previewPath = getPreviewPath?.(row)
+                            if (previewPath) {
+                              navigate(previewPath, {
+                                state: {
+                                  question,
+                                  returnTo: location.pathname,
+                                  listState: { endpoint, pageRequest, searchDraft, searchQuery },
+                                },
+                              })
+                            } else {
+                              setPreviewQuestion(question)
+                            }
+                          }}
                         >
                           <span className="material-symbols-outlined">visibility</span>
                           Preview
@@ -323,7 +341,7 @@ function DataPage({ columns, endpoint, getPreviewQuestion, searchLabel, searchPl
                 ))}
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length + (getPreviewQuestion ? 1 : 0)}>No records found.</td>
+                    <td colSpan={columns.length + (hasPreview ? 1 : 0)}>No records found.</td>
                   </tr>
                 ) : null}
               </tbody>
@@ -450,6 +468,45 @@ function FeedbackDetailPage() {
   )
 }
 
+function QuestionPreviewPage() {
+  const { questionId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const initialQuestion = location.state?.question
+  const questionQuery = useQuery({
+    queryKey: queryKeys.adminResource(`/admin/questions/${questionId}`),
+    queryFn: ({ signal }) => adminRequest(`/admin/questions/${questionId}`, { signal }),
+    enabled: !initialQuestion,
+    retry: false,
+  })
+  const question = initialQuestion || questionQuery.data?.question
+
+  const close = () => {
+    navigate(location.state?.returnTo || `${ADMIN_ROUTE}/questions`, {
+      state: location.state?.listState ? { dataPage: location.state.listState } : undefined,
+    })
+  }
+
+  if (!initialQuestion && questionQuery.isPending) return <LoadingPage />
+
+  if (questionQuery.isError || !question) {
+    return (
+      <main className="grid h-screen place-items-center bg-base-100 p-6" data-theme="nord">
+        <div className="grid max-w-xl gap-4">
+          <div className="alert alert-warning"><span>{questionQuery.error?.message || 'Question not found.'}</span></div>
+          <button className="btn btn-primary justify-self-center" type="button" onClick={close}>Back to questions</button>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className="h-screen overflow-hidden">
+      <QuestionReviewScreen question={question} showResult={false} onClose={close} />
+    </main>
+  )
+}
+
 function AdminRoutes() {
   return (
     <Routes>
@@ -479,7 +536,7 @@ function AdminRoutes() {
             <DataPage
               title="Questions"
               endpoint="/admin/questions"
-              getPreviewQuestion={(row) => row}
+              getPreviewPath={(row) => `${ADMIN_ROUTE}/questions/${row.id}/preview`}
               searchLabel="Question ID"
               searchPlaceholder="Search QID"
               columns={[
@@ -493,6 +550,7 @@ function AdminRoutes() {
           </Protected>
         )}
       />
+      <Route path="questions/:questionId/preview" element={<Protected><QuestionPreviewPage /></Protected>} />
       <Route
         path="feedback"
         element={(

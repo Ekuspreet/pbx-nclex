@@ -65,7 +65,7 @@ async function timer(req, res, next) {
 
 async function submit(req, res, next) {
     try {
-        const payload = await submitTest(req.user.id, req.params.testId);
+        const payload = await submitTest(req.user.id, req.params.testId, req.body);
         res.status(200).json(payload);
     } catch (error) {
         next(error);

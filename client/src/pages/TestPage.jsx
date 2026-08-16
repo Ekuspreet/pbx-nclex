@@ -41,12 +41,13 @@ function TestPage() {
   const [textSize, setTextSize] = useState(1)
   const [timeMs, setTimeMs] = useState(0)
   const lastSavedTimer = useRef(0)
+  const questionStartedAt = useRef(null)
   const expirationSubmitted = useRef(false)
   const testQuery = useQuery({ queryKey: queryKeys.test(testId), queryFn: ({ signal }) => getTest(testId, { signal }) })
   const answerMutation = useMutation({ mutationFn: (values) => saveTestAnswer(testId, values) })
   const statusMutation = useMutation({ mutationFn: (values) => updateTestStatus(testId, values) })
   const timerMutation = useMutation({ mutationFn: (values) => updateTestTimer(testId, values) })
-  const submitMutation = useMutation({ mutationFn: () => submitTest(testId) })
+  const submitMutation = useMutation({ mutationFn: (values) => submitTest(testId, values) })
   const createHighlightMutation = useMutation({ mutationFn: createHighlight })
   const deleteHighlightMutation = useMutation({ mutationFn: deleteHighlight })
   const createNoteMutation = useMutation({ mutationFn: createNote })
@@ -70,6 +71,7 @@ function TestPage() {
           nextAnswers[item.questionId] = {
             value: item.answer ?? '',
             submitted: Boolean(payload.test.status === 'completed' || (payload.test.tutorMode && item.checkedAt)),
+            timeSpentMs: item.timeSpentMs || 0,
           }
         }
         setAnswers(nextAnswers)
@@ -81,6 +83,27 @@ function TestPage() {
   useEffect(() => {
     if (testQuery.isError) setState({ loading: false, error: testQuery.error.message, test: null, questions: [] })
   }, [testQuery.error, testQuery.isError])
+
+  useEffect(() => {
+    questionStartedAt.current = state.test?.status === 'in_progress' && !explanationOpen
+      ? Date.now()
+      : null
+  }, [currentQuestion?.questionId, explanationOpen, state.test?.status])
+
+  useEffect(() => {
+    const startedAt = questionStartedAt.current
+    if (!startedAt || !currentQuestion || Date.now() - startedAt < 15000) return
+    const timeSpentMs = Math.min(300000, Date.now() - startedAt)
+    questionStartedAt.current = Date.now()
+    statusMutation.mutate({ questionId: currentQuestion.questionId, timeSpentMs })
+    setAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [currentQuestion.questionId]: {
+        ...currentAnswers[currentQuestion.questionId],
+        timeSpentMs: (currentAnswers[currentQuestion.questionId]?.timeSpentMs || 0) + timeSpentMs,
+      },
+    }))
+  }, [currentQuestion, statusMutation, timeMs])
 
   useEffect(() => {
     window.localStorage.setItem('testTheme', theme)
@@ -112,10 +135,13 @@ function TestPage() {
     if (expirationSubmitted.current) return
 
     expirationSubmitted.current = true
-    submitMutation.mutateAsync()
+    submitMutation.mutateAsync({
+      questionId: currentQuestion?.questionId,
+      timeSpentMs: takeQuestionTime(),
+    })
       .then((payload) => navigate(`/tests/${payload.test.id}/result`, { replace: true }))
       .catch((error) => setState((currentState) => ({ ...currentState, error: error.message })))
-  }, [navigate, state.test, submitMutation, timeMs])
+  }, [currentQuestion?.questionId, navigate, state.test, submitMutation, timeMs])
 
   const updateLocalQuestion = (questionId, patch) => {
     setState((currentState) => ({
@@ -126,14 +152,38 @@ function TestPage() {
     }))
   }
 
+  const takeQuestionTime = () => {
+    const startedAt = questionStartedAt.current
+    if (!startedAt) return 0
+    const timeSpentMs = Math.max(0, Date.now() - startedAt)
+    questionStartedAt.current = Date.now()
+    return timeSpentMs
+  }
+
+  const flushQuestionTime = async () => {
+    if (!currentQuestion) return
+    const timeSpentMs = takeQuestionTime()
+    if (!timeSpentMs) return
+    await statusMutation.mutateAsync({ questionId: currentQuestion.questionId, timeSpentMs })
+    setAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [currentQuestion.questionId]: {
+        ...currentAnswers[currentQuestion.questionId],
+        timeSpentMs: (currentAnswers[currentQuestion.questionId]?.timeSpentMs || 0) + timeSpentMs,
+      },
+    }))
+  }
+
   const saveAnswer = async () => {
     if (!currentQuestion) return
 
     const answerState = answers[currentQuestion.questionId]
+    const timeSpentMs = takeQuestionTime()
     const payload = await answerMutation.mutateAsync({
       questionId: currentQuestion.questionId,
       answer: answerState?.value ?? '',
       position: currentQuestion.position,
+      timeSpentMs,
     })
 
     updateLocalQuestion(currentQuestion.questionId, {
@@ -146,6 +196,7 @@ function TestPage() {
       [currentQuestion.questionId]: {
         value: answerState?.value ?? '',
         submitted: Boolean(state.test.tutorMode),
+        timeSpentMs: payload.question.timeSpentMs,
       },
     }))
   }
@@ -153,6 +204,8 @@ function TestPage() {
   const jumpTo = async (index) => {
     const item = state.questions[index]
     if (!item) return
+
+    await flushQuestionTime()
 
     setCurrent(index)
     setNavigatorOpen(false)
@@ -213,14 +266,18 @@ function TestPage() {
   const endTest = async () => {
     if (!window.confirm('Are you sure you want to end this test?')) return
 
-    const payload = await submitMutation.mutateAsync()
+    const payload = await submitMutation.mutateAsync({
+      questionId: currentQuestion.questionId,
+      timeSpentMs: takeQuestionTime(),
+    })
     await queryClient.invalidateQueries({ queryKey: queryKeys.tests })
     navigate(`/tests/${payload.test.id}/result`)
   }
 
-  const pauseTest = () => {
+  const pauseTest = async () => {
     if (!window.confirm('Are you sure you want to pause and close this test?')) return
 
+    await flushQuestionTime()
     navigate('/home')
   }
 
@@ -252,6 +309,7 @@ function TestPage() {
     questionText: applyHighlightsToHtml(stripExhibitLink(currentQuestion.question.questionText), highlights),
   }
   const highlightedExplanation = applyHighlightsToHtml(currentQuestion.question.explanationText, highlights, 'explanation')
+  const highlightedAdditionalText = applyHighlightsToHtml(currentQuestion.question.additionalText, highlights, 'additionalText')
 
   return (
     <TestShell
@@ -327,10 +385,12 @@ function TestPage() {
       />
       {explanationOpen ? (
         <TestExplanation
+          additionalHtml={highlightedAdditionalText}
           html={highlightedExplanation}
-          onHighlight={(exact) => addHighlight(exact, 'explanation')}
+          onHighlight={(selector) => addHighlight(selector, selector.region || 'explanation')}
           onUnhighlight={removeHighlights}
           onNotebook={addNotebookNote}
+          standards={currentQuestion.question.standards || []}
           textSizeClass={QUESTION_TEXT_SIZES[textSize]}
         />
       ) : null}

@@ -90,11 +90,11 @@ function AuthPage({ mode }) {
 
         <section className="relative grid min-h-[calc(100vh-5rem)] place-items-center bg-transparent px-4 py-10 lg:bg-base-100">
           <form
-            className="relative z-10 w-full max-w-md rounded-box border border-base-300 bg-base-100/95 shadow-xl backdrop-blur-md lg:border-0 lg:bg-transparent lg:shadow-none lg:backdrop-blur-0"
+            className="relative z-10 min-w-0 w-full max-w-md rounded-box border border-base-300 bg-base-100/95 shadow-xl backdrop-blur-md lg:border-0 lg:bg-transparent lg:shadow-none lg:backdrop-blur-0"
             onSubmit={handleSubmit}
             noValidate
           >
-            <div className="grid gap-4 p-6">
+            <div className="grid min-w-0 gap-4 p-4 sm:p-6">
               <div className="grid gap-2 text-center">
                 <p className="text-kicker">{isSignup ? 'Start learning' : 'Welcome back'}</p>
                 <h1 className="text-3xl font-black">{isSignup ? 'Create your account' : 'Log in to PBX Nursing'}</h1>
@@ -108,7 +108,7 @@ function AuthPage({ mode }) {
               ) : null}
 
               {googleClientId ? (
-                <div className="grid place-items-center">
+                <div className="grid min-w-0 place-items-center overflow-hidden [&>div]:!w-full [&_iframe]:!w-full">
                   <GoogleLogin
                     onSuccess={handleGoogleSuccess}
                     onError={() => setStatus({ type: 'error', message: 'Google Sign-In was not completed.' })}

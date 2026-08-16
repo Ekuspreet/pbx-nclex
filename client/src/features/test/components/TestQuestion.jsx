@@ -3,27 +3,28 @@ import QuestionRenderer from '../../../ui/questionnaire/QuestionRenderer.jsx'
 import { getCorrectAnswer, hasAnswer } from '../../../ui/questionnaire/questionHelpers.js'
 import { createHighlightSelector } from '../testUtils.js'
 
-function QuestionResult({ answerState, question, showAnswerDetails = false }) {
+function formatQuestionTime(ms) {
+  const seconds = Math.max(0, Math.round((ms || 0) / 1000))
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
+
+function QuestionResult({ answerState, question }) {
   if (!answerState?.submitted) return null
 
   const answered = answerState.answered ?? hasAnswer(answerState.value)
   const isCorrect = answered && String(answerState.value) === String(getCorrectAnswer(question))
-  const statusColor = isCorrect ? 'text-success' : answered ? 'text-error' : 'text-info'
-  const dividerColor = isCorrect ? 'border-success' : answered ? 'border-error' : 'border-info'
+  const statusColor = isCorrect ? 'text-success' : answered ? 'text-error' : 'text-neutral/75'
+  const dividerColor = isCorrect ? 'border-success' : answered ? 'border-error' : 'border-neutral/75'
   const rows = [
-    ...(showAnswerDetails ? [
-      ['Your Answer-', answered ? String(answerState.value) : 'Omitted'],
-      ['Correct Answer-', String(getCorrectAnswer(question) || '-')],
-    ] : []),
     ['Score obtained-', isCorrect ? '1 / 1' : '0 / 1'],
     ['Scoring Rule-', isCorrect ? '1 / 1' : '0 / 1'],
     ['Percentage -', isCorrect ? '100%' : '0%'],
-    ['Time Spent-', '0:00'],
+    ['Time Spent-', formatQuestionTime(answerState.timeSpentMs)],
   ]
 
   return (
     <section
-      className="relative mt-4 overflow-visible rounded-xl bg-base-100 p-6 shadow-[0_10px_25px_-5px_rgb(0_0_0/0.08),0_8px_10px_-6px_rgb(0_0_0/0.08)]"
+      className="relative mt-4 overflow-visible rounded-xl bg-base-100 p-6 shadow-[0_0_24px_2px_rgb(0_0_0/0.18)]"
       aria-label="Question result"
       aria-live="polite"
     >
@@ -112,10 +113,10 @@ function TestQuestion({ answerState, constrained, mode = 'test', onAnswerChange,
         onAnswerChange={onAnswerChange}
         onSubmit={onSubmit}
       />
-      {showResult ? <QuestionResult answerState={answerState} question={question} showAnswerDetails={mode === 'review'} /> : null}
+      {showResult ? <QuestionResult answerState={answerState} question={question} /> : null}
       {selection ? (
         <div
-          className="fixed z-50 grid min-w-44 -translate-y-full rounded-md border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-xl"
+          className="fixed z-50 grid min-w-44 -translate-y-full rounded-md border border-base-300 bg-base-100 p-1 text-sm text-base-content "
           style={{ left: selection.left, top: selection.top }}
           onMouseDown={(event) => event.preventDefault()}
           onMouseUp={(event) => event.stopPropagation()}

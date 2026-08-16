@@ -34,6 +34,7 @@ const saveAnswerSchema = z.object({
     questionId: z.string().uuid(),
     answer: answerSchema,
     position: z.number().int().min(0).optional(),
+    timeSpentMs: z.number().int().min(0).max(86400000).optional(),
 });
 
 const updateQuestionStatusSchema = z.object({
@@ -41,7 +42,13 @@ const updateQuestionStatusSchema = z.object({
     currentPosition: z.number().int().min(0).optional(),
     visited: z.boolean().optional(),
     markedForReview: z.boolean().optional(),
+    timeSpentMs: z.number().int().min(0).max(86400000).optional(),
 });
+
+const submitTestSchema = z.object({
+    questionId: z.string().uuid().optional(),
+    timeSpentMs: z.number().int().min(0).max(86400000).optional(),
+}).strict();
 
 const updateTimerSchema = z.object({
     elapsedMs: z.number().int().min(0).optional(),
@@ -54,9 +61,12 @@ const listContextQuerySchema = z.object({
 
 const createNoteSchema = z.object({
     testId: z.string().uuid().optional(),
-    questionId: z.string().uuid(),
+    questionId: z.string().uuid().nullable().optional(),
+    questionReference: z.number().int().positive().optional(),
     title: z.string().trim().min(1).max(160),
     content: z.string().trim().min(1).max(20000),
+}).refine((value) => !(value.questionId && value.questionReference), {
+    message: 'Provide either questionId or questionReference, not both.',
 });
 
 const updateNoteSchema = z.object({
@@ -138,6 +148,7 @@ module.exports = {
     replaceHighlightsSchema,
     replyFeedbackSchema,
     saveAnswerSchema,
+    submitTestSchema,
     testIdParamSchema,
     updateFeedbackStatusSchema,
     updateHighlightSchema,

@@ -1,0 +1,1 @@
+ALTER TABLE "notes" ALTER COLUMN "question_id" DROP NOT NULL;

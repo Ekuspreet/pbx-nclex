@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import ExplanationPanel from '../../../ui/questionnaire/ExplanationPanel.jsx'
+import ReferenceHtml from '../../../ui/questionnaire/ReferenceHtml.jsx'
 import { createHighlightSelector } from '../testUtils.js'
 
-function TestExplanation({ html, onHighlight, onNotebook, onUnhighlight, textSizeClass }) {
+function TestExplanation({ additionalHtml, html, onHighlight, onNotebook, onUnhighlight, standards = [], textSizeClass }) {
   const containerRef = useRef(null)
   const [selection, setSelection] = useState(null)
+  const standardItems = Array.isArray(standards) ? standards : []
 
-  if (!html) return null
+  if (!html && !additionalHtml && standardItems.length === 0) return null
 
   const captureSelection = () => {
     const activeSelection = window.getSelection()
@@ -17,7 +19,8 @@ function TestExplanation({ html, onHighlight, onNotebook, onUnhighlight, textSiz
     }
     const selectionRange = activeSelection.getRangeAt(0)
     const highlightRoot = activeSelection.anchorNode?.parentElement?.closest('.reference-html')
-    const selector = createHighlightSelector(highlightRoot, selectionRange, 'explanation')
+    const region = highlightRoot?.closest('[data-highlight-region]')?.dataset.highlightRegion || 'explanation'
+    const selector = createHighlightSelector(highlightRoot, selectionRange, region)
     if (!selector) {
       setSelection(null)
       return
@@ -39,7 +42,31 @@ function TestExplanation({ html, onHighlight, onNotebook, onUnhighlight, textSiz
 
   return (
     <aside ref={containerRef} className={`min-h-fit flex-none border-t border-base-content/50 bg-base-100 p-6 pb-[60px] lg:min-h-0 lg:basis-1/2 lg:overflow-y-auto lg:border-l lg:border-t-0 ${textSizeClass} test-adjustable-text`} aria-label="Explanation" onMouseUp={captureSelection}>
-      <ExplanationPanel html={html} />
+      {html ? <div data-highlight-region="explanation"><ExplanationPanel html={html} /></div> : null}
+      {additionalHtml ? (
+        <div className="mt-5 rounded-md border border-base-300 bg-base-200 p-4 shadow-sm" data-highlight-region="additionalText">
+          <ReferenceHtml html={additionalHtml} className="leading-[1.6] text-base-content/90" />
+        </div>
+      ) : null}
+      {standardItems.length > 0 ? (
+        <div className="mt-6 border-t border-base-300 pt-5" aria-label="Standards">
+          <div className="space-y-4">
+            {standardItems.map((standard, index) => {
+              const description = typeof standard === 'string' ? standard : standard?.description
+              const header = typeof standard === 'object' ? standard?.header : null
+
+              if (!description && !header) return null
+
+              return (
+                <div key={`${header || ''}-${description || ''}-${index}`}>
+                  {description ? <p className="text-base-content">{description}</p> : null}
+                  {header ? <p className="mt-2 text-[0.85em] text-base-content/50">{header}</p> : null}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
       {selection ? (
         <div className="fixed z-50 grid min-w-44 -translate-y-full rounded-md border border-base-300 bg-base-100 p-1 text-sm text-base-content shadow-xl" style={{ left: selection.left, top: selection.top }} onMouseDown={(event) => event.preventDefault()} onMouseUp={(event) => event.stopPropagation()}>
           {selection.highlightIds.length > 0 ? (

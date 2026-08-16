@@ -2,7 +2,7 @@ function TestShell({ bottomControls, children, mode = 'test', modals, navbar, na
   const reviewMode = mode === 'review'
 
   return (
-    <div className={`test-page flex overflow-hidden bg-base-100 text-base-content ${reviewMode ? 'h-full' : 'h-screen'}`} data-theme={theme} data-screen-mode={mode}>
+    <div className={`test-page flex overflow-hidden bg-base-100 text-base-content ${reviewMode ? 'h-full' : 'h-dvh'}`} data-theme={theme} data-screen-mode={mode}>
       {navigator}
       <main className="flex min-h-0 flex-1 flex-col">
         {topBar}

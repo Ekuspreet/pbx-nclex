@@ -1,0 +1,1 @@
+ALTER TABLE "test_questions" ADD COLUMN "time_spent_ms" integer DEFAULT 0 NOT NULL;

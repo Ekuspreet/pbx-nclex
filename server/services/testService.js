@@ -192,6 +192,7 @@ function combineQuestionState(testQuestion, question) {
         visited: testQuestion.visited,
         answered: testQuestion.answered,
         markedForReview: testQuestion.markedForReview,
+        timeSpentMs: testQuestion.timeSpentMs,
         question: toClientQuestion(question),
     };
 }
@@ -277,6 +278,9 @@ async function saveAnswer(userId, testId, payload) {
                 isCorrect: shouldCheck ? correctness : null,
                 checkedAt: shouldCheck ? now : null,
                 updatedAt: now,
+                ...(payload.timeSpentMs ? {
+                    timeSpentMs: sql`${testQuestions.timeSpentMs} + ${payload.timeSpentMs}`,
+                } : {}),
             })
             .where(eq(testQuestions.id, testQuestion.id))
             .returning();
@@ -323,6 +327,10 @@ async function updateQuestionStatus(userId, testId, payload) {
 
             if (typeof payload.markedForReview === 'boolean') {
                 set.markedForReview = payload.markedForReview;
+            }
+
+            if (payload.timeSpentMs) {
+                set.timeSpentMs = sql`${testQuestions.timeSpentMs} + ${payload.timeSpentMs}`;
             }
 
             [updatedQuestion] = await tx
@@ -593,7 +601,7 @@ function buildLatestQuestionStats(latestQuestionRows, questionRows) {
     };
 }
 
-async function submitTest(userId, testId) {
+async function submitTest(userId, testId, payload = {}) {
     const now = new Date();
 
     return db.transaction(async (tx) => {
@@ -601,6 +609,19 @@ async function submitTest(userId, testId) {
 
         if (test.status !== 'in_progress') {
             throw createTestClosedError('This test has already been submitted.');
+        }
+
+        if (payload.questionId && payload.timeSpentMs) {
+            await tx
+                .update(testQuestions)
+                .set({
+                    timeSpentMs: sql`${testQuestions.timeSpentMs} + ${payload.timeSpentMs}`,
+                    updatedAt: now,
+                })
+                .where(and(
+                    eq(testQuestions.testId, testId),
+                    eq(testQuestions.questionId, payload.questionId)
+                ));
         }
 
         return finalizeTest(tx, test, now);

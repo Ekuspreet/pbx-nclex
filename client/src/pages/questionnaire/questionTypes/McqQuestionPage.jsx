@@ -39,7 +39,7 @@ function ExhibitModal({ exhibit, onClose }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-neutral/60 p-3 sm:p-4">
       <section className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-base-100 shadow-xl">
-        <header className="flex items-center justify-between gap-3 border-b border-base-300 p-4">
+        <header className="flex items-center justify-between gap-3 border-b border-test-bar-content/40 bg-test-bar p-4 text-test-bar-content">
           <h2 className="text-xl font-black">{exhibit?.title || 'Exhibit'}</h2>
           <button className="btn btn-ghost btn-square btn-sm" type="button" onClick={onClose} aria-label="Close exhibit">
             <span className="material-symbols-outlined">close</span>
@@ -55,7 +55,7 @@ function ExhibitModal({ exhibit, onClose }) {
           {!exhibitQuery.isPending && !exhibitQuery.isError ? (
             <iframe
               className="h-[65vh] w-full rounded border border-base-300 bg-white"
-              sandbox=""
+              sandbox="allow-scripts"
               srcDoc={exhibitQuery.data}
               title={exhibit?.title || 'Exhibit'}
             />
@@ -76,11 +76,11 @@ function ExhibitButtons({ exhibits = [] }) {
     <>
       <div className="mb-3 flex flex-wrap gap-2">
         <button
-          className="btn btn-outline btn-sm"
+          className="mt-4 ml-2 inline-flex h-8 items-center justify-center gap-1.5 bg-test-toolbar px-3 text-sm font-bold leading-none text-test-bar-content disabled:cursor-not-allowed"
           type="button"
           onClick={() => setSelectedExhibit(firstExhibit)}
         >
-          <span className="material-symbols-outlined">description</span>
+          <span className="material-symbols-outlined !text-[20px] leading-none">description</span>
           Exhibit
         </button>
       </div>
@@ -157,12 +157,12 @@ function McqQuestionPage({ question, answer, submitted, onChange }) {
             const showIndicator = submitted && (isCorrect || isSelected)
 
             return (
-              <label className="relative mb-2 min-h-[42px] cursor-pointer py-[10px] pl-[50px] pr-[5px] leading-[1.3]" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
+              <label className="relative mb-2 flex min-h-[46px] cursor-pointer items-center py-2 pl-[54px] pr-[5px] leading-[1.3]" data-choice={choice.choiceNumber} key={choice.choiceNumber}>
                 <AnswerIndicator className="absolute left-0 top-1/2 z-10 -translate-y-1/2" show={showIndicator} correct={isCorrect} />
                 <input
                   type="radio"
                   name={`answer-${question.questionId}`}
-                  className="test-option-input absolute left-[22px] top-1/2 size-[22px] -translate-y-1/2 appearance-none rounded-[4px] border-2 border-base-100 bg-base-100 shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33)] checked:border-base-100 checked:bg-test-toolbar checked:shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33),inset_0_0_0_4px_white]"
+                  className="test-option-input absolute left-[22px] top-1/2 size-[26px] -translate-y-1/2 appearance-none rounded-[5px] border-2 border-base-100 bg-base-100 shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33)] checked:border-base-100 checked:bg-test-toolbar checked:shadow-[inset_0_0_0_1px_rgb(65_65_65/0.33),inset_0_0_0_5px_white]"
                   value={choice.choiceNumber}
                   checked={isSelected}
                   onChange={() => onChange(String(choice.choiceNumber))}
@@ -170,7 +170,7 @@ function McqQuestionPage({ question, answer, submitted, onChange }) {
                 />
                 <ReferenceHtml
                   as="span"
-                  className={`label-text ${crossedChoices.has(choice.choiceNumber) ? 'line-through opacity-60' : ''}`}
+                  className={`label-text block w-full ${crossedChoices.has(choice.choiceNumber) ? 'line-through opacity-60' : ''}`}
                   onClick={handleChoiceClick}
                   onContextMenu={(event) => suppressChoiceClick.current && event.preventDefault()}
                   onPointerCancel={cancelLongPress}
