@@ -66,14 +66,28 @@ const paymentVerifyLimiter = createAuthRateLimit({
     message: 'Too many payment verification requests. Please try again later.',
 });
 
+const codePreviewLimiter = createAuthRateLimit({
+    windowMinutes: 15,
+    max: 30,
+    message: 'Too many code checks. Please try again later.',
+});
+
+const referralActivateLimiter = createAuthRateLimit({
+    windowMinutes: 15,
+    max: 10,
+    message: 'Too many activation attempts. Please try again later.',
+});
+
 module.exports = {
     adminLoginLimiter,
+    codePreviewLimiter,
     loginLimiter,
     otpResendLimiter,
     otpVerifyLimiter,
     passwordResetLimiter,
     paymentOrderLimiter,
     paymentVerifyLimiter,
+    referralActivateLimiter,
     refreshLimiter,
     signupLimiter,
 };

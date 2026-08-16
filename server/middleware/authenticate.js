@@ -1,6 +1,6 @@
 const { and, desc, eq, gt } = require('drizzle-orm');
 
-const { db, subscriptions, users } = require('../db');
+const { db, subscriptions, users, wallets } = require('../db');
 const { env } = require('../env');
 const { toPublicUser, verifyAccessToken } = require('../utils/auth');
 
@@ -53,10 +53,17 @@ async function authenticate(req, res, next) {
             .orderBy(desc(subscriptions.expiresAt))
             .limit(1);
 
+        const [wallet] = await db
+            .select({ bankedFreeMonths: wallets.bankedFreeMonths })
+            .from(wallets)
+            .where(eq(wallets.userId, user.id))
+            .limit(1);
+
         req.user = toPublicUser({
             ...user,
             plan: subscription?.plan || 'free',
             subscriptionExpiresAt: subscription?.expiresAt || null,
+            bankedFreeMonths: wallet?.bankedFreeMonths || 0,
         });
         req.auth = {
             accessTokenId: payload.jti,

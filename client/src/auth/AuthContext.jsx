@@ -17,10 +17,12 @@ import { AuthContext } from './authContext.js'
 import { queryKeys } from '../services/queryKeys.js'
 
 const PASSWORD_PROMPT_DISMISSED_USER_KEY = 'passwordPromptDismissedUser'
+const FREE_MONTH_PROMPT_DISMISSED_USER_KEY = 'freeMonthPromptDismissedUser'
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient()
   const [passwordPromptDismissed, setPasswordPromptDismissed] = useState(false)
+  const [freeMonthPromptDismissed, setFreeMonthPromptDismissed] = useState(false)
   const sessionQuery = useQuery({
     queryKey: queryKeys.session,
     queryFn: getCurrentUser,
@@ -42,6 +44,9 @@ export function AuthProvider({ children }) {
   const passwordPromptDismissedForUser = passwordPromptDismissed || (
     promptUserKey && window.sessionStorage.getItem(PASSWORD_PROMPT_DISMISSED_USER_KEY) === promptUserKey
   )
+  const freeMonthPromptDismissedForUser = freeMonthPromptDismissed || (
+    promptUserKey && window.sessionStorage.getItem(FREE_MONTH_PROMPT_DISMISSED_USER_KEY) === promptUserKey
+  )
 
   const refreshUser = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.session, refetchType: 'none' })
@@ -57,6 +62,11 @@ export function AuthProvider({ children }) {
     dismissPasswordPrompt() {
       if (promptUserKey) window.sessionStorage.setItem(PASSWORD_PROMPT_DISMISSED_USER_KEY, promptUserKey)
       setPasswordPromptDismissed(true)
+    },
+    shouldPromptForFreeMonth: Boolean(user && user.bankedFreeMonths > 0 && !freeMonthPromptDismissedForUser),
+    dismissFreeMonthPrompt() {
+      if (promptUserKey) window.sessionStorage.setItem(FREE_MONTH_PROMPT_DISMISSED_USER_KEY, promptUserKey)
+      setFreeMonthPromptDismissed(true)
     },
     async signup(values) {
       return signupMutation.mutateAsync(values)
@@ -111,7 +121,7 @@ export function AuthProvider({ children }) {
       queryClient.setQueryData(queryKeys.session, { user: null })
       return result
     },
-  }), [forgotPasswordMutation, googleLoginMutation, isCheckingSession, loginMutation, logoutMutation, passwordPromptDismissedForUser, promptUserKey, queryClient, refreshUser, resendOtpMutation, resetPasswordMutation, setPasswordMutation, signupMutation, updateProfileMutation, user, verifyEmailMutation])
+  }), [forgotPasswordMutation, freeMonthPromptDismissedForUser, googleLoginMutation, isCheckingSession, loginMutation, logoutMutation, passwordPromptDismissedForUser, promptUserKey, queryClient, refreshUser, resendOtpMutation, resetPasswordMutation, setPasswordMutation, signupMutation, updateProfileMutation, user, verifyEmailMutation])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

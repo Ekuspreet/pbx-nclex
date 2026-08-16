@@ -1,10 +1,14 @@
 const crypto = require('crypto');
-const { and, desc, eq, gt } = require('drizzle-orm');
+const { and, desc, eq } = require('drizzle-orm');
 const Razorpay = require('razorpay');
 
-const { db, paymentOrders, paymentWebhookEvents, subscriptions } = require('../db');
+const { db, discountCodes, paymentOrders, paymentWebhookEvents, subscriptions } = require('../db');
 const { env } = require('../env');
 const { PLAN_CATALOG } = require('./planCatalog');
+const { resolveCodeForCheckout, incrementRedemptionCount } = require('./discountCodeService');
+const { MIN_PAYABLE_AMOUNT_PAISE, previewRedeemCoins, debitCoins } = require('./walletService');
+const { creditReferralConversion } = require('./referralService');
+const { computeStackedWindow } = require('./subscriptionStacking');
 
 function createPaymentError(statusCode, message, code) {
     const error = new Error(message);
@@ -59,9 +63,27 @@ function verifyWebhookSignature(rawBody, signature) {
     }
 }
 
-async function createOrderForUser(userId, planName) {
+async function previewCode(userId, code, planName) {
+    const { discountCode, discountAmount } = await resolveCodeForCheckout(userId, code, planName);
+    return { discountPercent: discountCode.discountPercent, discountAmount };
+}
+
+async function createOrderForUser(userId, planName, { code, redeemCoins } = {}) {
     const plan = PLAN_CATALOG[planName];
     if (!plan || plan.amount === 0) throw createPaymentError(400, 'Unknown subscription plan.', 'PAYMENT_UNKNOWN_PLAN');
+
+    let discountCode = null;
+    let discountAmount = 0;
+
+    if (code) {
+        const resolved = await resolveCodeForCheckout(userId, code, planName);
+        discountCode = resolved.discountCode;
+        discountAmount = resolved.discountAmount;
+    }
+
+    const amountAfterCode = plan.amount - discountAmount;
+    const walletCoinsRedeemed = redeemCoins ? await previewRedeemCoins(userId, amountAfterCode) : 0;
+    const amount = Math.max(MIN_PAYABLE_AMOUNT_PAISE, amountAfterCode - walletCoinsRedeemed * 100);
 
     const id = crypto.randomUUID();
     const receipt = `plus_${id.replaceAll('-', '').slice(0, 26)}`;
@@ -69,7 +91,7 @@ async function createOrderForUser(userId, planName) {
 
     try {
         razorpayOrder = await getRazorpayClient().orders.create({
-            amount: plan.amount,
+            amount,
             currency: plan.currency,
             receipt,
             notes: { app_order_id: id, user_id: userId, plan: planName },
@@ -85,15 +107,21 @@ async function createOrderForUser(userId, planName) {
         id,
         userId,
         plan: planName,
-        amount: plan.amount,
+        amount,
         currency: plan.currency,
         razorpayOrderId: razorpayOrder.id,
+        appliedDiscountCodeId: discountCode?.id || null,
+        discountAmount,
+        walletCoinsRedeemed,
     });
 
     return {
         order_id: razorpayOrder.id,
-        amount: plan.amount,
+        amount,
         currency: plan.currency,
+        planAmount: plan.amount,
+        discountAmount,
+        walletCoinsRedeemed,
     };
 }
 
@@ -127,15 +155,7 @@ async function fulfillOrder(tx, orderId, paymentId, now = new Date()) {
         return existing;
     }
 
-    const [latest] = await tx
-        .select({ expiresAt: subscriptions.expiresAt })
-        .from(subscriptions)
-        .where(and(eq(subscriptions.userId, order.userId), gt(subscriptions.expiresAt, now)))
-        .orderBy(desc(subscriptions.expiresAt))
-        .limit(1);
-
-    const startsAt = latest?.expiresAt || now;
-    const expiresAt = new Date(startsAt.getTime() + PLAN_CATALOG[order.plan].durationDays * 24 * 60 * 60 * 1000);
+    const { startsAt, expiresAt } = await computeStackedWindow(tx, order.userId, PLAN_CATALOG[order.plan].durationDays, now);
     const [subscription] = await tx.insert(subscriptions).values({
         userId: order.userId,
         paymentOrderId: order.id,
@@ -143,6 +163,25 @@ async function fulfillOrder(tx, orderId, paymentId, now = new Date()) {
         startsAt,
         expiresAt,
     }).returning();
+
+    if (order.walletCoinsRedeemed > 0) {
+        await debitCoins(tx, order.userId, order.walletCoinsRedeemed, order.id, now);
+    }
+
+    if (order.appliedDiscountCodeId) {
+        const [appliedCode] = await tx.select().from(discountCodes).where(eq(discountCodes.id, order.appliedDiscountCodeId)).limit(1);
+        if (appliedCode) {
+            await incrementRedemptionCount(tx, appliedCode.id);
+            if (appliedCode.type === 'referral') {
+                await creditReferralConversion(tx, {
+                    referrerUserId: appliedCode.ownerUserId,
+                    refereeUserId: order.userId,
+                    discountCodeId: appliedCode.id,
+                    paymentOrderId: order.id,
+                }, now);
+            }
+        }
+    }
 
     await tx.update(paymentOrders).set({
         razorpayPaymentId: paymentId,
@@ -213,6 +252,7 @@ async function listPaymentHistory(userId) {
 module.exports = {
     createOrderForUser,
     listPaymentHistory,
+    previewCode,
     processWebhook,
     verifyBrowserPayment,
     verifyWebhookSignature,

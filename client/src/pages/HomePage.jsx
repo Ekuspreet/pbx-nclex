@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import { brand } from '../content/landing/index.js'
 import {
+  activateFreeMonth,
   createHighlight,
   createNote,
   createTest,
@@ -12,10 +13,13 @@ import {
   getDashboard,
   getFeedback,
   getPaymentHistory,
+  getPlans,
+  getReferralSummary,
   listFeedback,
   listHighlights,
   listNotes,
   listTests,
+  previewDiscountCode,
   replyFeedback,
 } from '../services/studyAdapter.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
@@ -1254,9 +1258,38 @@ function PricingPageContent({ currentPlan, pricingContent }) {
 function PaymentPageContent({ onPaymentComplete, pricingContent }) {
   const plusPlan = pricingContent.plans.find((plan) => plan.key === 'plus')
   const [checkoutState, setCheckoutState] = useState({ status: 'idle', message: '' })
+  const [codeInput, setCodeInput] = useState('')
+  const [codePreview, setCodePreview] = useState(null)
+  const [codeError, setCodeError] = useState('')
+  const [useWalletCoins, setUseWalletCoins] = useState(false)
   const queryClient = useQueryClient()
-  const createOrderMutation = useMutation({ mutationFn: () => apiRequest('/payments/create-order', { method: 'POST', body: { plan: 'plus' } }) })
+  const plansQuery = useQuery({ queryKey: queryKeys.plans, queryFn: getPlans, staleTime: 5 * 60_000 })
+  const referralSummaryQuery = useQuery({ queryKey: queryKeys.referralSummary, queryFn: getReferralSummary })
+  const previewCodeMutation = useMutation({ mutationFn: previewDiscountCode })
+  const createOrderMutation = useMutation({ mutationFn: (payload) => apiRequest('/payments/create-order', { method: 'POST', body: payload }) })
   const verifyPaymentMutation = useMutation({ mutationFn: (payment) => apiRequest('/payments/verify-payment', { method: 'POST', body: payment }) })
+
+  const planAmount = plansQuery.data?.plans?.find((plan) => plan.key === 'plus')?.amount || 0
+  const coinBalance = referralSummaryQuery.data?.coinBalance || 0
+  const codeDiscount = codePreview?.discountAmount || 0
+  const amountAfterCode = Math.max(0, planAmount - codeDiscount)
+  const walletCoinsToRedeem = useWalletCoins ? Math.max(0, Math.min(coinBalance, Math.floor((amountAfterCode - 100) / 100))) : 0
+  const finalAmount = Math.max(100, amountAfterCode - walletCoinsToRedeem * 100)
+  const formatInr = (paise) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paise / 100)
+
+  const applyCode = async () => {
+    setCodeError('')
+    setCodePreview(null)
+    const trimmed = codeInput.trim()
+    if (!trimmed) return
+
+    try {
+      const preview = await previewCodeMutation.mutateAsync({ plan: 'plus', code: trimmed })
+      setCodePreview(preview)
+    } catch (error) {
+      setCodeError(getApiErrorMessage(error))
+    }
+  }
 
   const startCheckout = async () => {
     if (!window.Razorpay) {
@@ -1273,7 +1306,11 @@ function PaymentPageContent({ onPaymentComplete, pricingContent }) {
     setCheckoutState({ status: 'loading', message: '' })
 
     try {
-      const order = await createOrderMutation.mutateAsync()
+      const order = await createOrderMutation.mutateAsync({
+        plan: 'plus',
+        code: codePreview ? codeInput.trim() : undefined,
+        redeemCoins: useWalletCoins,
+      })
 
       const checkout = new window.Razorpay({
         key,
@@ -1289,6 +1326,7 @@ function PaymentPageContent({ onPaymentComplete, pricingContent }) {
             await verifyPaymentMutation.mutateAsync(payment)
             await onPaymentComplete()
             await queryClient.invalidateQueries({ queryKey: queryKeys.payments })
+            await queryClient.invalidateQueries({ queryKey: queryKeys.referralSummary })
             setCheckoutState({ status: 'success', message: 'Payment verified successfully. Your transaction is complete.' })
           } catch (error) {
             setCheckoutState({ status: 'error', message: getApiErrorMessage(error) })
@@ -1337,6 +1375,46 @@ function PaymentPageContent({ onPaymentComplete, pricingContent }) {
           <p className="text-kicker">Checkout</p>
           <h2 className="text-2xl font-black">{plusPlan.price}</h2>
           <p className="text-body text-muted">{plusPlan.cadence}</p>
+
+          <label className="grid gap-1">
+            <span className="label-text">Referral or promo code (optional)</span>
+            <div className="flex gap-2">
+              <input
+                className="input input-bordered w-full uppercase"
+                value={codeInput}
+                onChange={(event) => { setCodeInput(event.target.value); setCodePreview(null); setCodeError('') }}
+                placeholder="e.g. ABCD1234"
+                disabled={checkoutState.status === 'loading' || checkoutState.status === 'verifying'}
+              />
+              <button className="btn btn-outline" type="button" onClick={applyCode} disabled={previewCodeMutation.isPending || !codeInput.trim()}>
+                {previewCodeMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : 'Apply'}
+              </button>
+            </div>
+          </label>
+          {codeError ? <p className="text-sm text-error">{codeError}</p> : null}
+          {codePreview ? <p className="text-sm text-success">Code applied — {codePreview.discountPercent}% off ({formatInr(codePreview.discountAmount)})</p> : null}
+
+          {coinBalance > 0 ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={useWalletCoins}
+                onChange={(event) => setUseWalletCoins(event.target.checked)}
+              />
+              Use my {coinBalance} wallet coins for an extra discount
+            </label>
+          ) : null}
+
+          {planAmount > 0 ? (
+            <ul className="rule-list text-sm">
+              <li className="flex justify-between"><span>Plan price</span><strong>{formatInr(planAmount)}</strong></li>
+              {codeDiscount > 0 ? <li className="flex justify-between"><span>Code discount</span><strong>-{formatInr(codeDiscount)}</strong></li> : null}
+              {walletCoinsToRedeem > 0 ? <li className="flex justify-between"><span>Wallet coins ({walletCoinsToRedeem})</span><strong>-{formatInr(walletCoinsToRedeem * 100)}</strong></li> : null}
+              <li className="flex justify-between"><span>Payable</span><strong>{formatInr(finalAmount)}</strong></li>
+            </ul>
+          ) : null}
+
           <button
             className="btn btn-primary"
             disabled={checkoutState.status === 'loading' || checkoutState.status === 'verifying'}
@@ -1368,6 +1446,33 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
   const [isSavingPassword, setIsSavingPassword] = useState(false)
   const paymentsQuery = useQuery({ queryKey: queryKeys.payments, queryFn: getPaymentHistory })
   const payments = paymentsQuery.data?.payments || []
+  const queryClient = useQueryClient()
+  const referralQuery = useQuery({ queryKey: queryKeys.referralSummary, queryFn: getReferralSummary })
+  const [referralCopied, setReferralCopied] = useState(false)
+  const [activateStatus, setActivateStatus] = useState(null)
+  const activateFreeMonthMutation = useMutation({ mutationFn: activateFreeMonth })
+  const copyReferralCode = async () => {
+    const code = referralQuery.data?.code
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      setReferralCopied(true)
+      window.setTimeout(() => setReferralCopied(false), 2000)
+    } catch {
+      setReferralCopied(false)
+    }
+  }
+  const activateOneFreeMonth = async () => {
+    setActivateStatus(null)
+    try {
+      await activateFreeMonthMutation.mutateAsync()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.referralSummary })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.session })
+      setActivateStatus({ type: 'success', message: 'A free month has been added to your membership.' })
+    } catch (error) {
+      setActivateStatus({ type: 'error', message: getApiErrorMessage(error) })
+    }
+  }
   const initial = user.name?.[0]?.toUpperCase() || 'U'
   const profileRows = [
     { icon: 'badge', label: 'Name', value: user.name },
@@ -1476,6 +1581,40 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
         <div className="mt-5"><h3 className="text-xs font-bold uppercase text-base-content/60">Payment history</h3>{payments.length ? <ul className="mt-2 divide-y divide-base-200">{payments.map((payment) => <li className="flex flex-wrap justify-between gap-2 py-3 text-sm" key={payment.id}><span>{payment.plan === 'plus' ? 'PBX Nursing Plus' : payment.plan}</span><span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: payment.currency }).format(payment.amount / 100)} · {payment.status} · {new Date(payment.paidAt || payment.createdAt).toLocaleDateString()}</span></li>)}</ul> : <p className="mt-2 text-sm text-base-content/60">No payments yet.</p>}</div>
       </section>
 
+      <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+        <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">redeem</span><div><h2 className="font-bold text-base-content">Referral & wallet</h2><p className="text-sm text-base-content/60">Share your code with friends to earn rewards</p></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-base-200 p-5">
+          {referralQuery.isLoading ? (
+            <span className="loading loading-spinner loading-sm" />
+          ) : referralQuery.isError ? (
+            <p className="text-sm text-error">{getApiErrorMessage(referralQuery.error)}</p>
+          ) : (
+            <>
+              <strong className="font-mono text-lg tracking-widest">{referralQuery.data?.code}</strong>
+              <button className="btn btn-outline btn-sm" type="button" onClick={copyReferralCode}>{referralCopied ? 'Copied!' : 'Copy code'}</button>
+            </>
+          )}
+        </div>
+        {referralQuery.data ? (
+          <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div><p className="text-xs uppercase text-base-content/50">Coin balance</p><strong>{referralQuery.data.coinBalance}</strong></div>
+            <div><p className="text-xs uppercase text-base-content/50">Successful referrals</p><strong>{referralQuery.data.successfulReferralCount}</strong></div>
+            <div><p className="text-xs uppercase text-base-content/50">Banked free months</p><strong>{referralQuery.data.bankedFreeMonths}</strong></div>
+          </div>
+        ) : null}
+        {activateStatus ? <div className={`alert mt-4 text-sm ${activateStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} role="status"><span>{activateStatus.message}</span></div> : null}
+        {referralQuery.data?.bankedFreeMonths > 0 ? (
+          <button
+            className="btn btn-primary btn-sm mt-4"
+            type="button"
+            disabled={activateFreeMonthMutation.isPending}
+            onClick={activateOneFreeMonth}
+          >
+            {activateFreeMonthMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : null}Activate a free month
+          </button>
+        ) : null}
+      </section>
+
     </div>
   )
 }
@@ -1498,10 +1637,18 @@ function PageBody({ page, currentPlan, onLogout, onPaymentComplete, onSetPasswor
 function HomePage({ page = 'dashboard' }) {
   const auth = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const content = getPageContent(page)
   const user = auth.user || { name: 'PBX learner', email: '' }
   const currentPlan = getUserPlan(user)
   const pricingContent = usePlanCatalog()
+  const activateFreeMonthMutation = useMutation({ mutationFn: activateFreeMonth })
+  const activateFreeMonthFromPrompt = async () => {
+    await activateFreeMonthMutation.mutateAsync()
+    await queryClient.invalidateQueries({ queryKey: queryKeys.referralSummary })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.session })
+    auth.dismissFreeMonthPrompt()
+  }
 
   return (
     <>
@@ -1545,6 +1692,24 @@ function HomePage({ page = 'dashboard' }) {
               }}
             >
               Set password
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+      {!auth.shouldPromptForPassword && auth.shouldPromptForFreeMonth && page !== 'profile' ? (
+        <Modal title="You've earned a free month!" onClose={auth.dismissFreeMonthPrompt}>
+          <p className="text-base-content/70">
+            Your referrals have earned you a banked free month of PBX Nursing Plus. Activate it now to extend your membership.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button className="btn btn-ghost" type="button" onClick={auth.dismissFreeMonthPrompt}>Not now</button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              disabled={activateFreeMonthMutation.isPending}
+              onClick={activateFreeMonthFromPrompt}
+            >
+              {activateFreeMonthMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : null}Activate now
             </button>
           </div>
         </Modal>

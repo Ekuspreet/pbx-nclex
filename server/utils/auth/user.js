@@ -9,6 +9,7 @@ function toPublicUser(user) {
         status: user.status,
         plan: user.plan || 'free',
         subscriptionExpiresAt: user.subscriptionExpiresAt || null,
+        bankedFreeMonths: user.bankedFreeMonths || 0,
     };
 }
 

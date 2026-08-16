@@ -12,6 +12,25 @@ export function getPaymentHistory(options = {}) {
   return apiRequest('/payments/history', options)
 }
 
+export function getReferralSummary(options = {}) {
+  return apiRequest('/referrals/summary', options)
+}
+
+export function activateFreeMonth() {
+  return apiRequest('/referrals/activate-free-month', { method: 'POST' })
+}
+
+export function getWalletLedger(options = {}) {
+  return apiRequest('/wallet/ledger', options)
+}
+
+export function previewDiscountCode(payload) {
+  return apiRequest('/payments/preview-code', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
 export function getQuestionStats(options = {}) {
   return apiRequest('/questions/stats', options)
 }

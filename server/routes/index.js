@@ -10,6 +10,8 @@ const noteRoutes = require('./noteRoutes');
 const questionRoutes = require('./questionRoutes');
 const testRoutes = require('./testRoutes');
 const paymentRoutes = require('./paymentRoutes');
+const referralRoutes = require('./referralRoutes');
+const walletRoutes = require('./walletRoutes');
 const authenticate = require('../middleware/authenticate');
 const planController = require('../controllers/planController');
 
@@ -26,5 +28,7 @@ router.use('/notes', authenticate, noteRoutes);
 router.use('/highlights', authenticate, highlightRoutes);
 router.use('/feedback', authenticate, feedbackRoutes);
 router.use('/payments', authenticate, paymentRoutes);
+router.use('/referrals', authenticate, referralRoutes);
+router.use('/wallet', authenticate, walletRoutes);
 
 module.exports = router;

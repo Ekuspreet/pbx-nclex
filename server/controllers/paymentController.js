@@ -1,6 +1,7 @@
 const {
     createOrderForUser,
     listPaymentHistory,
+    previewCode,
     processWebhook,
     verifyBrowserPayment,
     verifyWebhookSignature,
@@ -8,11 +9,19 @@ const {
 
 async function createOrder(req, res, next) {
     try {
-        if (typeof req.body?.plan !== 'string') {
-            return res.status(400).json({ message: 'Subscription plan is required.' });
-        }
-        const order = await createOrderForUser(req.user.id, req.body.plan);
+        const { plan, code, redeemCoins } = req.body;
+        const order = await createOrderForUser(req.user.id, plan, { code, redeemCoins });
         res.status(201).json(order);
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function checkCode(req, res, next) {
+    try {
+        const { plan, code } = req.body;
+        const preview = await previewCode(req.user.id, code, plan);
+        res.status(200).json(preview);
     } catch (error) {
         next(error);
     }
@@ -72,4 +81,4 @@ async function webhook(req, res, next) {
     }
 }
 
-module.exports = { createOrder, history, verifyPayment, webhook };
+module.exports = { checkCode, createOrder, history, verifyPayment, webhook };

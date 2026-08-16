@@ -18,6 +18,8 @@ export const queryKeys = {
   feedback: ['feedback'],
   feedbackDetail: (feedbackId) => ['feedback', feedbackId],
   payments: ['payments'],
+  referralSummary: ['referral', 'summary'],
+  walletLedger: ['wallet', 'ledger'],
   adminSession: ['admin', 'session'],
   adminDashboard: ['admin', 'dashboard'],
   adminResource: (endpoint, params) => ['admin', endpoint, normalizedParams(params)],
