@@ -10,13 +10,17 @@ const { notes } = require('./note');
 const { highlights } = require('./highlight');
 const { paymentOrders } = require('./paymentOrder');
 const { paymentWebhookEvents } = require('./paymentWebhookEvent');
-const { subscriptions } = require('./subscription');
+const { subscriptionSourceEnum, subscriptions } = require('./subscription');
 const {
     feedbackMessages,
     feedbackSenderTypeEnum,
     feedbackStatusEnum,
     feedbackThreads,
 } = require('./feedback');
+const { discountCodeTypeEnum, discountCodes } = require('./discountCode');
+const { wallets } = require('./wallet');
+const { walletLedgerTypeEnum, walletLedgerEntries } = require('./walletLedgerEntry');
+const { referralConversions } = require('./referralConversion');
 
 module.exports = {
     questions,
@@ -34,9 +38,16 @@ module.exports = {
     highlights,
     paymentOrders,
     paymentWebhookEvents,
+    subscriptionSourceEnum,
     subscriptions,
     feedbackMessages,
     feedbackSenderTypeEnum,
     feedbackStatusEnum,
     feedbackThreads,
+    discountCodeTypeEnum,
+    discountCodes,
+    wallets,
+    walletLedgerTypeEnum,
+    walletLedgerEntries,
+    referralConversions,
 };

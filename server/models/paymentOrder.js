@@ -1,5 +1,6 @@
 const { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } = require('drizzle-orm/pg-core');
 
+const { discountCodes } = require('./discountCode');
 const { users } = require('./user');
 
 const paymentOrders = pgTable(
@@ -13,6 +14,9 @@ const paymentOrders = pgTable(
         razorpayOrderId: text('razorpay_order_id').notNull(),
         razorpayPaymentId: text('razorpay_payment_id'),
         status: text('status').default('created').notNull(),
+        appliedDiscountCodeId: uuid('applied_discount_code_id').references(() => discountCodes.id),
+        discountAmount: integer('discount_amount').default(0).notNull(),
+        walletCoinsRedeemed: integer('wallet_coins_redeemed').default(0).notNull(),
         fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
         createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
         updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

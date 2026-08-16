@@ -138,6 +138,12 @@ function validateEnv() {
             }
         }
 
+        for (const key of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET']) {
+            if (!env[key]) {
+                errors.push(`${key} is required in production.`);
+            }
+        }
+
         if (env.ADMIN_PASSWORD && env.ADMIN_PASSWORD.length < 12) {
             errors.push('ADMIN_PASSWORD must contain at least 12 characters in production.');
         }
