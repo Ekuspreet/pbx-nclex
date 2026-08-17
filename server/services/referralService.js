@@ -59,12 +59,20 @@ async function getOrCreateReferralCode(userId) {
 }
 
 async function getReferralSummary(userId) {
-    const [code, wallet] = await Promise.all([
-        getOrCreateReferralCode(userId),
+    const [[paidSubscription], wallet] = await Promise.all([
+        db.select({ id: subscriptions.id })
+            .from(subscriptions)
+            .where(and(eq(subscriptions.userId, userId), eq(subscriptions.source, 'purchase')))
+            .limit(1),
         walletService.getWalletSummary(userId),
     ]);
 
-    return { code: code.code, ...wallet };
+    if (!paidSubscription) {
+        return { eligible: false, code: null, ...wallet };
+    }
+
+    const code = await getOrCreateReferralCode(userId);
+    return { eligible: true, code: code.code, ...wallet };
 }
 
 async function creditReferralConversion(tx, { referrerUserId, refereeUserId, discountCodeId, paymentOrderId }, now = new Date()) {

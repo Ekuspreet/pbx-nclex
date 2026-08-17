@@ -89,6 +89,22 @@
 }
 
 @layer components {
+  .profile-phone-input {
+    @apply h-8 rounded-lg border border-base-300 bg-base-100 px-3 text-sm transition-colors;
+  }
+
+  .profile-phone-input:focus-within {
+    @apply border-primary outline-2 outline-offset-2 outline-primary/20;
+  }
+
+  .profile-phone-input .PhoneInputInput {
+    @apply min-w-0 border-0 bg-transparent text-sm text-base-content outline-none;
+  }
+
+  .profile-phone-input .PhoneInputCountry {
+    @apply mr-3;
+  }
+
   .test-page,
   .test-page *:not(.material-symbols-outlined) {
     font-family: "Helvetica Neue", Arial, sans-serif;

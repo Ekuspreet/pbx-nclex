@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 import { useAuth } from '../auth/useAuth.js'
 import { brand } from '../content/landing/index.js'
 import {
@@ -403,6 +405,7 @@ function CreateTestPageContent() {
     systems: [],
   })
   const [submitError, setSubmitError] = useState('')
+  const [questionAvailabilityMessage, setQuestionAvailabilityMessage] = useState('')
 
   useEffect(() => {
     if (!statsQuery.data || filtersInitialized.current) return
@@ -531,13 +534,31 @@ function CreateTestPageContent() {
           <span className="label-text whitespace-nowrap font-bold">No. of Questions</span>
           <input
             className="input input-bordered input-sm w-full text-center"
-            max={maxQuestions}
+            max="85"
             min="1"
             type="number"
             value={form.questionCount}
-            onChange={(event) => setForm({ ...form, questionCount: event.target.value })}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value === '') {
+                setQuestionAvailabilityMessage('')
+                setForm({ ...form, questionCount: value })
+                return
+              }
+
+              const requestedCount = Number(value)
+              if (requestedCount > matchingQuestionCount) {
+                setForm({ ...form, questionCount: Math.min(matchingQuestionCount, 85) })
+                setQuestionAvailabilityMessage(`Total available questions with selected pair are ${matchingQuestionCount}`)
+                return
+              }
+
+              setQuestionAvailabilityMessage('')
+              setForm({ ...form, questionCount: Math.min(requestedCount, 85) })
+            }}
           />
-          <span className="flex items-baseline gap-1.5 text-caption text-muted sm:whitespace-nowrap">Max allowed <strong className="text-base-content">{maxQuestions}</strong></span>
+          <span className="flex items-baseline gap-1.5 text-caption text-muted sm:whitespace-nowrap">Max allowed <strong className="text-base-content">85</strong></span>
+          {questionAvailabilityMessage ? <span className="text-xs font-medium text-warning sm:col-span-3">{questionAvailabilityMessage}</span> : null}
         </label>
         <button className="btn btn-primary min-w-40" disabled={createTestMutation.isPending || maxQuestions === 0 || asCount(form.questionCount) > maxQuestions} type="submit">
           {createTestMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : null}
@@ -1219,7 +1240,7 @@ function WorkspacePlanCard({ plan, currentPlan }) {
       <div className="card-body p-md gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-h3">{plan.name}</h2>
-          <span className={`badge ${isCurrent ? 'badge-success' : plan.featured ? 'badge-primary' : 'badge-outline'}`}>
+          <span className={`badge ${isCurrent ? 'badge-primary' : plan.featured ? 'badge-primary' : 'badge-outline'}`}>
             {isCurrent ? 'Current plan' : plan.badge}
           </span>
         </div>
@@ -1234,7 +1255,12 @@ function WorkspacePlanCard({ plan, currentPlan }) {
           ))}
         </ul>
         <div className="card-actions mt-auto">
-          {isCurrent ? (
+          {isCurrent && plan.key === 'plus' ? (
+            <Link className="btn btn-primary gap-2" to="/payment">
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">autorenew</span>
+              Renew Plus
+            </Link>
+          ) : isCurrent ? (
             <button className="btn btn-outline" type="button" disabled>Current plan</button>
           ) : (
             <Link className="btn btn-primary" to={href}>{plan.key === 'plus' ? 'Buy Plus' : 'Use Free'}</Link>
@@ -1276,6 +1302,7 @@ function PaymentPageContent({ onPaymentComplete, pricingContent }) {
   const walletCoinsToRedeem = useWalletCoins ? Math.max(0, Math.min(coinBalance, Math.floor((amountAfterCode - 100) / 100))) : 0
   const finalAmount = Math.max(100, amountAfterCode - walletCoinsToRedeem * 100)
   const formatInr = (paise) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paise / 100)
+  const displayedTotal = planAmount > 0 ? formatInr(finalAmount) : plusPlan.price
 
   const applyCode = async () => {
     setCodeError('')
@@ -1355,95 +1382,191 @@ function PaymentPageContent({ onPaymentComplete, pricingContent }) {
     }
   }
 
+  const isProcessing = checkoutState.status === 'loading' || checkoutState.status === 'verifying'
+
   return (
-    <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <article className="card surface-raised">
-        <div className="card-body p-md gap-4">
-          <p className="text-kicker">Selected plan</p>
-          <h2 className="text-h3">{plusPlan.name}</h2>
-          <p className="text-body text-muted">{plusPlan.description}</p>
-          <ul className="rule-list">
-            {plusPlan.features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
+    <section className="mx-auto w-full max-w-5xl">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <Link className="btn btn-ghost btn-sm -ml-3 gap-1 text-base-content/70" to="/pricing">
+          <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_back</span>
+          Back to plans
+        </Link>
+        <div className="flex items-center gap-1.5 text-xs font-medium text-base-content/60">
+          <span className="material-symbols-outlined text-base text-success" aria-hidden="true">lock</span>
+          Secure checkout
         </div>
-      </article>
+      </div>
 
-      <article className="card surface-raised">
-        <div className="card-body p-md gap-4">
-          <p className="text-kicker">Checkout</p>
-          <h2 className="text-2xl font-black">{plusPlan.price}</h2>
-          <p className="text-body text-muted">{plusPlan.cadence}</p>
-
-          <label className="grid gap-1">
-            <span className="label-text">Referral or promo code (optional)</span>
-            <div className="flex gap-2">
-              <input
-                className="input input-bordered w-full uppercase"
-                value={codeInput}
-                onChange={(event) => { setCodeInput(event.target.value); setCodePreview(null); setCodeError('') }}
-                placeholder="e.g. ABCD1234"
-                disabled={checkoutState.status === 'loading' || checkoutState.status === 'verifying'}
-              />
-              <button className="btn btn-outline" type="button" onClick={applyCode} disabled={previewCodeMutation.isPending || !codeInput.trim()}>
-                {previewCodeMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : 'Apply'}
-              </button>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_23rem]">
+        <article className="card surface-raised overflow-hidden border border-base-300">
+          <div className="border-b border-base-300 bg-primary/[0.04] px-6 py-5 sm:px-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-kicker">Selected plan</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{plusPlan.name}</h2>
+                <p className="mt-1 text-sm text-base-content/60">{plusPlan.cadence} · One-time payment</p>
+              </div>
+              <span className="badge badge-primary badge-lg font-bold">Plus</span>
             </div>
-          </label>
-          {codeError ? <p className="text-sm text-error">{codeError}</p> : null}
-          {codePreview ? <p className="text-sm text-success">Code applied — {codePreview.discountPercent}% off ({formatInr(codePreview.discountAmount)})</p> : null}
+          </div>
 
-          {coinBalance > 0 ? (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-sm"
-                checked={useWalletCoins}
-                onChange={(event) => setUseWalletCoins(event.target.checked)}
-              />
-              Use my {coinBalance} wallet coins for an extra discount
-            </label>
-          ) : null}
-
-          {planAmount > 0 ? (
-            <ul className="rule-list text-sm">
-              <li className="flex justify-between"><span>Plan price</span><strong>{formatInr(planAmount)}</strong></li>
-              {codeDiscount > 0 ? <li className="flex justify-between"><span>Code discount</span><strong>-{formatInr(codeDiscount)}</strong></li> : null}
-              {walletCoinsToRedeem > 0 ? <li className="flex justify-between"><span>Wallet coins ({walletCoinsToRedeem})</span><strong>-{formatInr(walletCoinsToRedeem * 100)}</strong></li> : null}
-              <li className="flex justify-between"><span>Payable</span><strong>{formatInr(finalAmount)}</strong></li>
-            </ul>
-          ) : null}
-
-          <button
-            className="btn btn-primary"
-            disabled={checkoutState.status === 'loading' || checkoutState.status === 'verifying'}
-            onClick={startCheckout}
-            type="button"
-          >
-            {checkoutState.status === 'loading' ? 'Preparing checkout…' : checkoutState.status === 'verifying' ? 'Verifying payment…' : 'Buy Plus'}
-          </button>
-          {checkoutState.message ? (
-            <div className={`alert ${checkoutState.status === 'success' ? 'alert-success' : checkoutState.status === 'cancelled' ? 'alert-warning' : 'alert-error'}`} role="status">
-              <span>{checkoutState.message}</span>
+          <div className="card-body gap-6 p-6 sm:p-8">
+            <p className="max-w-2xl text-body text-muted">{plusPlan.description}</p>
+            <div>
+              <h3 className="text-sm font-bold">Everything included</h3>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                {plusPlan.features.map((feature) => (
+                  <li className="flex items-start gap-2.5 text-sm leading-5" key={feature}>
+                    <span className="material-symbols-outlined mt-0.5 text-lg text-success" aria-hidden="true">check_circle</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ) : null}
-        </div>
-      </article>
+
+            <div className="rounded-xl border border-base-300 bg-base-200/60 p-4">
+              <div className="flex gap-3">
+                <span className="material-symbols-outlined text-xl text-primary" aria-hidden="true">bolt</span>
+                <div>
+                  <p className="text-sm font-bold">Access starts immediately</p>
+                  <p className="mt-0.5 text-xs leading-5 text-base-content/60">Your Plus benefits will be activated as soon as your payment is verified.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article className="card surface-raised border border-base-300 lg:sticky lg:top-6">
+          <div className="card-body gap-0 p-6">
+            <p className="text-kicker">Order summary</p>
+
+            <div className="mt-5 flex items-start justify-between gap-4 border-b border-base-300 pb-5">
+              <div>
+                <p className="font-bold">{plusPlan.name}</p>
+                <p className="mt-1 text-sm text-base-content/60">{plusPlan.cadence}</p>
+              </div>
+              <p className="font-bold">{plusPlan.price}</p>
+            </div>
+
+            <div className="border-b border-base-300 py-5">
+              <label className="text-xs font-bold text-base-content/70" htmlFor="checkout-discount-code">Referral or promo code</label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  className="input input-sm input-bordered min-w-0 flex-1 uppercase"
+                  id="checkout-discount-code"
+                  value={codeInput}
+                  onChange={(event) => { setCodeInput(event.target.value); setCodePreview(null); setCodeError('') }}
+                  placeholder="Enter code"
+                  disabled={isProcessing}
+                />
+                <button className="btn btn-outline btn-sm" type="button" onClick={applyCode} disabled={previewCodeMutation.isPending || !codeInput.trim() || isProcessing}>
+                  {previewCodeMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : 'Apply'}
+                </button>
+              </div>
+              {codeError ? <p className="mt-2 text-xs text-error">{codeError}</p> : null}
+              {codePreview ? <p className="mt-2 text-xs font-medium text-success">Code applied — {codePreview.discountPercent}% off</p> : null}
+
+              {coinBalance > 0 ? (
+                <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-base-content/70">
+                  <input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={useWalletCoins} onChange={(event) => setUseWalletCoins(event.target.checked)} disabled={isProcessing} />
+                  Use {coinBalance} wallet coins
+                </label>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2 border-b border-base-300 py-5 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-base-content/60">Subtotal</span><span>{planAmount > 0 ? formatInr(planAmount) : plusPlan.price}</span></div>
+              {codeDiscount > 0 ? <div className="flex justify-between gap-4 text-success"><span>Code discount</span><span>-{formatInr(codeDiscount)}</span></div> : null}
+              {walletCoinsToRedeem > 0 ? <div className="flex justify-between gap-4 text-success"><span>Wallet coins ({walletCoinsToRedeem})</span><span>-{formatInr(walletCoinsToRedeem * 100)}</span></div> : null}
+            </div>
+
+            <div className="flex items-end justify-between gap-4 py-5">
+              <div>
+                <p className="font-bold">Total payable</p>
+                <p className="mt-1 text-xs text-base-content/50">One-time payment</p>
+              </div>
+              <p className="text-3xl font-black tracking-tight">{displayedTotal}</p>
+            </div>
+
+            <button
+              className="btn btn-primary btn-lg w-full gap-2 shadow-sm"
+              disabled={isProcessing}
+              onClick={startCheckout}
+              type="button"
+            >
+              {isProcessing ? <span className="loading loading-spinner loading-sm" /> : <span className="material-symbols-outlined text-xl" aria-hidden="true">lock</span>}
+              {checkoutState.status === 'loading' ? 'Preparing checkout…' : checkoutState.status === 'verifying' ? 'Verifying payment…' : `Pay ${displayedTotal}`}
+            </button>
+
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-base-content/50">
+              <span className="material-symbols-outlined text-base" aria-hidden="true">verified_user</span>
+              Payments secured by Razorpay
+            </div>
+
+            {checkoutState.message ? (
+              <div className={`alert mt-5 text-sm ${checkoutState.status === 'success' ? 'alert-success' : checkoutState.status === 'cancelled' ? 'alert-warning' : 'alert-error'}`} role="status">
+                <span>{checkoutState.message}</span>
+              </div>
+            ) : null}
+
+            <p className="mt-5 text-center text-xs leading-5 text-base-content/50">
+              By continuing, you agree to our <Link className="link link-hover" to="/terms-and-conditions">Terms</Link> and <Link className="link link-hover" to="/cancellation-policy">Cancellation Policy</Link>.
+            </p>
+          </div>
+        </article>
+      </div>
     </section>
+  )
+}
+
+function PaymentHistoryTable({ payments }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-base-300">
+      <table className="table table-sm">
+        <thead className="bg-base-200 text-xs uppercase text-base-content/60">
+          <tr>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payments.map((payment) => (
+            <tr key={payment.id}>
+              <td className="font-medium">{payment.plan === 'plus' ? 'PBX Nursing Plus' : payment.plan}</td>
+              <td>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: payment.currency || 'INR' }).format(payment.amount / 100)}</td>
+              <td><span className={`badge badge-sm capitalize ${payment.status === 'paid' ? 'badge-success' : 'badge-ghost'}`}>{payment.status}</span></td>
+              <td className="whitespace-nowrap">{new Date(payment.paidAt || payment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function EmptyPaymentHistory() {
+  return (
+    <div className="rounded-xl border border-dashed border-base-300 px-6 py-10 text-center">
+      <span className="material-symbols-outlined text-4xl text-base-content/30" aria-hidden="true">receipt_long</span>
+      <p className="mt-2 font-bold">No payments yet</p>
+      <p className="mt-1 text-sm text-base-content/60">Completed membership payments will appear here.</p>
+    </div>
   )
 }
 
 function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProfile, user }) {
   const navigate = useNavigate()
   const greeting = useTimeGreeting()
-  const [isEditing, setIsEditing] = useState(false)
+  const [editingProfileField, setEditingProfileField] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
   const [profileStatus, setProfileStatus] = useState(null)
   const [profileValues, setProfileValues] = useState({ name: user.name || '', phone: user.phone || '' })
   const [passwordValues, setPasswordValues] = useState({ password: '', confirmPassword: '' })
   const [passwordStatus, setPasswordStatus] = useState(null)
   const [isSavingPassword, setIsSavingPassword] = useState(false)
+  const [isPaymentHistoryOpen, setIsPaymentHistoryOpen] = useState(false)
   const paymentsQuery = useQuery({ queryKey: queryKeys.payments, queryFn: getPaymentHistory })
   const payments = paymentsQuery.data?.payments || []
   const queryClient = useQueryClient()
@@ -1473,12 +1596,8 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
       setActivateStatus({ type: 'error', message: getApiErrorMessage(error) })
     }
   }
+  const latestPayments = payments.slice(0, 10)
   const initial = user.name?.[0]?.toUpperCase() || 'U'
-  const profileRows = [
-    { icon: 'badge', label: 'Name', value: user.name },
-    { icon: 'mail', label: 'Email', value: user.email },
-    { icon: 'call', label: 'Contact', value: user.phone || 'Not provided' },
-  ]
   const logout = async () => {
     await onLogout()
     navigate('/login', { replace: true })
@@ -1490,13 +1609,18 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
       setProfileStatus({ type: 'error', message: 'Enter at least 2 characters for your name.' })
       return
     }
+    if (editingProfileField === 'phone' && profileValues.phone && !isValidPhoneNumber(profileValues.phone)) {
+      setProfileStatus({ type: 'error', message: 'Enter a valid contact number.' })
+      return
+    }
 
     setIsSaving(true)
+    const savedFieldLabel = editingProfileField === 'phone' ? 'Contact' : 'Name'
     try {
-      const result = await onUpdateProfile({ name: profileValues.name.trim(), phone: profileValues.phone.trim() })
+      const result = await onUpdateProfile({ name: profileValues.name.trim(), phone: profileValues.phone || '' })
       setProfileValues({ name: result.user.name, phone: result.user.phone || '' })
-      setProfileStatus({ type: 'success', message: result.message })
-      setIsEditing(false)
+      setProfileStatus({ type: 'success', message: result.message || `${savedFieldLabel} updated successfully.` })
+      setEditingProfileField(null)
     } catch (error) {
       setProfileStatus({ type: 'error', message: getApiErrorMessage(error) })
     } finally {
@@ -1553,23 +1677,53 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
       ) : null}
 
       <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
-        <div className="mb-5 flex items-start justify-between gap-3 text-primary">
-          <div className="flex items-start gap-3"><span className="material-symbols-outlined">person</span><div><h2 className="font-bold text-base-content">Profile</h2><p className="text-sm text-base-content/60">Personal details</p></div></div>
-          <button className="btn btn-outline btn-sm" type="button" disabled={isSaving} onClick={() => { setIsEditing((value) => !value); setProfileStatus(null); setProfileValues({ name: user.name || '', phone: user.phone || '' }) }}>{isEditing ? 'Cancel' : 'Edit profile'}</button>
+        <div className="mb-6">
+          <div><h2 className="font-bold text-base-content">Profile</h2><p className="text-sm text-base-content/60">Manage your personal details</p></div>
         </div>
         {profileStatus ? <div className={`alert mb-4 text-sm ${profileStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} role="status"><span>{profileStatus.message}</span></div> : null}
-        {isEditing ? (
-          <form className="grid gap-4" onSubmit={saveProfile}>
-            <label className="grid gap-1"><span className="label-text">Name</span><input className="input input-bordered w-full" value={profileValues.name} maxLength={100} onChange={(event) => setProfileValues((current) => ({ ...current, name: event.target.value }))} disabled={isSaving} required /></label>
-            <label className="grid gap-1"><span className="label-text">Contact number</span><input className="input input-bordered w-full" type="tel" inputMode="tel" value={profileValues.phone} maxLength={20} placeholder="e.g. +91 98765 43210" onChange={(event) => setProfileValues((current) => ({ ...current, phone: event.target.value }))} disabled={isSaving} /></label>
-            <div><button className="btn btn-primary" type="submit" disabled={isSaving}>{isSaving ? <span className="loading loading-spinner loading-xs" /> : null}Save changes</button></div>
-          </form>
-        ) : profileRows.map((row) => (
-          <div className="flex min-h-[70px] flex-wrap items-center justify-between gap-4 border-b border-base-200 last:border-0" key={row.label}>
-            <div className="flex items-center gap-4 text-base-content/80"><span className="material-symbols-outlined text-base-content/55">{row.icon}</span><span>{row.label}</span></div>
-            <strong className="text-sm">{row.value}</strong>
-          </div>
-        ))}
+        <div className="grid gap-3">
+          {[
+            { field: 'name', label: 'Name', value: user.name, type: 'text', editable: true },
+            { field: 'email', label: 'Email', value: user.email, type: 'email', editable: false },
+            { field: 'phone', label: 'Contact', value: user.phone || 'Not provided', type: 'tel', editable: true },
+          ].map((row) => (
+            <div className="group flex min-h-[76px] flex-wrap items-center gap-4 rounded-xl border border-base-200 bg-base-200/35 px-4 py-3 transition-colors hover:border-base-300 hover:bg-base-200/60 sm:flex-nowrap" key={row.field}>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-base-content/45">{row.label}</p>
+                {editingProfileField === row.field ? (
+                  <form className="mt-1 flex flex-wrap items-center gap-2" onSubmit={saveProfile} aria-busy={isSaving}>
+                    {row.field === 'phone' ? (
+                      <PhoneInput
+                        autoFocus
+                        className="profile-phone-input min-w-64 flex-1"
+                        defaultCountry="IN"
+                        disabled={isSaving}
+                        international
+                        limitMaxLength
+                        onChange={(value) => setProfileValues((current) => ({ ...current, phone: value || '' }))}
+                        placeholder="Phone number"
+                        value={profileValues.phone || undefined}
+                      />
+                    ) : (
+                      <input autoFocus className="input input-sm input-bordered min-w-52 flex-1 bg-base-100" disabled={isSaving} maxLength={100} onChange={(event) => setProfileValues((current) => ({ ...current, name: event.target.value }))} required type="text" value={profileValues.name} />
+                    )}
+                    <button className="btn btn-primary btn-sm min-w-24" disabled={isSaving} type="submit">
+                      {isSaving ? <><span className="loading loading-spinner loading-xs" /> Saving…</> : 'Save changes'}
+                    </button>
+                    <button className="btn btn-ghost btn-sm" disabled={isSaving} type="button" onClick={() => { setEditingProfileField(null); setProfileStatus(null); setProfileValues({ name: user.name || '', phone: user.phone || '' }) }}>
+                      Cancel
+                    </button>
+                  </form>
+                ) : <p className="mt-1 truncate text-sm font-semibold">{row.value}</p>}
+              </div>
+              {row.editable && editingProfileField !== row.field ? (
+                <button className="btn btn-ghost btn-sm shrink-0 text-base-content/55 hover:bg-primary/10 hover:text-primary" disabled={isSaving} type="button" onClick={() => { setEditingProfileField(row.field); setProfileStatus(null); setProfileValues({ name: user.name || '', phone: user.phone || '' }) }}>
+                  Edit
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
@@ -1578,10 +1732,10 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
           <div><div className="flex items-center gap-3"><strong>Plan - {currentPlan === 'plus' ? 'Plus' : 'Free'}</strong><span className={`badge badge-sm ${currentPlan === 'plus' ? 'badge-success' : 'badge-outline'}`}>{currentPlan === 'plus' ? 'Active' : 'Free'}</span></div><p className="mt-1 text-sm text-base-content/60">{getMembershipLabel(user)}{user.subscriptionExpiresAt ? ` · expires ${new Date(user.subscriptionExpiresAt).toLocaleDateString()}` : ''}</p></div>
           <Link className="btn btn-primary h-[42px] w-[140px]" to="/pricing">{currentPlan === 'plus' ? 'Renew Plan' : 'Upgrade'}</Link>
         </div>
-        <div className="mt-5"><h3 className="text-xs font-bold uppercase text-base-content/60">Payment history</h3>{payments.length ? <ul className="mt-2 divide-y divide-base-200">{payments.map((payment) => <li className="flex flex-wrap justify-between gap-2 py-3 text-sm" key={payment.id}><span>{payment.plan === 'plus' ? 'PBX Nursing Plus' : payment.plan}</span><span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: payment.currency }).format(payment.amount / 100)} · {payment.status} · {new Date(payment.paidAt || payment.createdAt).toLocaleDateString()}</span></li>)}</ul> : <p className="mt-2 text-sm text-base-content/60">No payments yet.</p>}</div>
       </section>
 
-      <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+      {referralQuery.data?.eligible ? (
+        <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
         <div className="mb-5 flex items-start gap-3 text-primary"><span className="material-symbols-outlined">redeem</span><div><h2 className="font-bold text-base-content">Referral & wallet</h2><p className="text-sm text-base-content/60">Share your code with friends to earn rewards</p></div></div>
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-base-200 p-5">
           {referralQuery.isLoading ? (
@@ -1613,7 +1767,55 @@ function ProfilePageContent({ currentPlan, onLogout, onSetPassword, onUpdateProf
             {activateFreeMonthMutation.isPending ? <span className="loading loading-spinner loading-xs" /> : null}Activate a free month
           </button>
         ) : null}
+        </section>
+      ) : null}
+
+      <section className="rounded-2xl border border-base-300 bg-base-100 px-6 py-6 md:px-8">
+        <div className="mb-5 flex items-start gap-3 text-primary">
+          <span className="material-symbols-outlined">receipt_long</span>
+          <div><h2 className="font-bold text-base-content">Payment history</h2><p className="text-sm text-base-content/60">Your 10 most recent membership payments</p></div>
+        </div>
+        {paymentsQuery.isPending ? (
+          <div className="grid min-h-32 place-items-center" role="status">
+            <span className="loading loading-spinner loading-md text-primary" />
+            <span className="sr-only">Loading payment history</span>
+          </div>
+        ) : paymentsQuery.isError ? (
+          <div className="alert alert-error text-sm" role="alert">
+            <span>{getApiErrorMessage(paymentsQuery.error)}</span>
+            <button className="btn btn-sm" type="button" onClick={() => paymentsQuery.refetch()}>Try again</button>
+          </div>
+        ) : latestPayments.length ? (
+          <PaymentHistoryTable payments={latestPayments} />
+        ) : (
+          <EmptyPaymentHistory />
+        )}
+        <button className="btn btn-outline btn-sm mt-5 gap-2" type="button" onClick={() => setIsPaymentHistoryOpen(true)}>
+          <span className="material-symbols-outlined text-lg" aria-hidden="true">open_in_new</span>
+          View entire payment history
+        </button>
       </section>
+
+      {isPaymentHistoryOpen ? (
+        <Modal title="Payment history" onClose={() => setIsPaymentHistoryOpen(false)}>
+          <p className="mb-4 text-sm text-base-content/60">A record of payments made for your PBX Nursing membership.</p>
+          {paymentsQuery.isPending ? (
+            <div className="grid min-h-40 place-items-center" role="status">
+              <span className="loading loading-spinner loading-md text-primary" />
+              <span className="sr-only">Loading payment history</span>
+            </div>
+          ) : paymentsQuery.isError ? (
+            <div className="alert alert-error text-sm" role="alert">
+              <span>{getApiErrorMessage(paymentsQuery.error)}</span>
+              <button className="btn btn-sm" type="button" onClick={() => paymentsQuery.refetch()}>Try again</button>
+            </div>
+          ) : payments.length ? (
+            <PaymentHistoryTable payments={payments} />
+          ) : (
+            <EmptyPaymentHistory />
+          )}
+        </Modal>
+      ) : null}
 
     </div>
   )
