@@ -39,7 +39,7 @@ function QuestionResult({ answerState, question }) {
   )
 }
 
-function TestQuestion({ answerState, constrained, mode = 'test', onAnswerChange, onHighlight, onNotebook, onSubmit, onUnhighlight, question, showResult = mode === 'test', submitLabel, textSizeClass }) {
+function TestQuestion({ answerState, constrained, mode = 'test', onAnswerChange, onHighlight, onNotebook, onSubmit, onUnhighlight, question, showResult = mode === 'test', showSubmit = mode === 'test', submitLabel, textSizeClass }) {
   const containerRef = useRef(null)
   const [selection, setSelection] = useState(null)
 
@@ -108,7 +108,7 @@ function TestQuestion({ answerState, constrained, mode = 'test', onAnswerChange,
       <QuestionRenderer
         answerState={answerState}
         question={question}
-        showSubmit={mode === 'test'}
+        showSubmit={showSubmit}
         submitLabel={submitLabel}
         onAnswerChange={onAnswerChange}
         onSubmit={onSubmit}

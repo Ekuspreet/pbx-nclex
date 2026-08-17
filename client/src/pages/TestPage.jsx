@@ -22,7 +22,7 @@ import TestQuestion from '../features/test/components/TestQuestion.jsx'
 import TestShell, { TestPageState } from '../features/test/components/TestShell.jsx'
 import TestTopBar from '../features/test/components/TestTopBar.jsx'
 import { applyHighlightsToHtml, getInitialQuestionIndex, isMcqTestQuestion } from '../features/test/testUtils.js'
-import { stripExhibitLink } from '../ui/questionnaire/questionHelpers.js'
+import { hasAnswer, stripExhibitLink } from '../ui/questionnaire/questionHelpers.js'
 import { queryKeys } from '../services/queryKeys.js'
 
 const QUESTION_TEXT_SIZES = ['text-sm', 'text-base', 'text-lg', 'text-xl']
@@ -201,6 +201,17 @@ function TestPage() {
     }))
   }
 
+  const saveUntutoredResponse = async () => {
+    if (state.test.tutorMode) return false
+    const answerState = answers[currentQuestion.questionId]
+    if (!hasAnswer(answerState?.value)) {
+      await flushQuestionTime()
+      return false
+    }
+    await saveAnswer()
+    return true
+  }
+
   const jumpTo = async (index) => {
     const item = state.questions[index]
     if (!item) return
@@ -266,6 +277,7 @@ function TestPage() {
   const endTest = async () => {
     if (!window.confirm('Are you sure you want to end this test?')) return
 
+    await saveUntutoredResponse()
     const payload = await submitMutation.mutateAsync({
       questionId: currentQuestion.questionId,
       timeSpentMs: takeQuestionTime(),
@@ -279,6 +291,12 @@ function TestPage() {
 
     await flushQuestionTime()
     navigate('/home')
+  }
+
+  const nextQuestion = async () => {
+    if (answerMutation.isPending) return
+    await saveUntutoredResponse()
+    await jumpTo(Math.min(state.questions.length - 1, current + 1))
   }
 
   const toggleFullscreen = () => {
@@ -348,13 +366,13 @@ function TestPage() {
       )}
       bottomControls={(
         <TestBottomControls
-          canNext={current < state.questions.length - 1}
+          canNext={current < state.questions.length - 1 && !answerMutation.isPending}
           canPrevious={current > 0}
           isLast={current === state.questions.length - 1}
           onEnd={endTest}
           onFinish={endTest}
           onNavigator={() => setNavigatorOpen((value) => !value)}
-          onNext={() => jumpTo(Math.min(state.questions.length - 1, current + 1))}
+          onNext={nextQuestion}
           onPause={pauseTest}
           onPrevious={() => jumpTo(Math.max(0, current - 1))}
         />
@@ -372,6 +390,7 @@ function TestPage() {
         answerState={answers[currentQuestion.questionId]}
         constrained={explanationOpen}
         question={highlightedQuestion}
+        showSubmit={state.test.tutorMode}
         submitLabel={state.test.tutorMode ? 'Check' : 'Save'}
         textSizeClass={QUESTION_TEXT_SIZES[textSize]}
         onHighlight={(exact) => addHighlight(exact, 'question')}
