@@ -25,6 +25,7 @@ const { plans } = require('./plan');
 const { referralProgramSettings, referralRewardTiers } = require('./referralRewardTier');
 const { planQuestions } = require('./planQuestion');
 const { contentEntries } = require('./contentEntry');
+const { applicationSettings } = require('./applicationSetting');
 
 module.exports = {
     questions,
@@ -59,4 +60,5 @@ module.exports = {
     referralRewardTiers,
     planQuestions,
     contentEntries,
+    applicationSettings,
 };

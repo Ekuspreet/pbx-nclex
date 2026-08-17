@@ -6,7 +6,8 @@ const { db, discountCodes, paymentOrders, paymentWebhookEvents, subscriptions } 
 const { env } = require('../env');
 const { findPlan } = require('./planCatalog');
 const { resolveCodeForCheckout, incrementRedemptionCount } = require('./discountCodeService');
-const { MIN_PAYABLE_AMOUNT_PAISE, previewRedeemCoins, debitCoins } = require('./walletService');
+const { previewRedeemCoins, debitCoins } = require('./walletService');
+const { getNumberSetting } = require('./applicationSettingService');
 const { creditReferralConversion } = require('./referralService');
 const { computeStackedWindow } = require('./subscriptionStacking');
 
@@ -82,8 +83,9 @@ async function createOrderForUser(userId, planName, { code, redeemCoins } = {}) 
     }
 
     const amountAfterCode = plan.amount - discountAmount;
-    const walletCoinsRedeemed = redeemCoins ? await previewRedeemCoins(userId, amountAfterCode) : 0;
-    const amount = Math.max(MIN_PAYABLE_AMOUNT_PAISE, amountAfterCode - walletCoinsRedeemed * 100);
+    const minimumPayablePaise = await getNumberSetting('payment.minimumPayablePaise');
+    const walletCoinsRedeemed = redeemCoins ? await previewRedeemCoins(userId, amountAfterCode, minimumPayablePaise) : 0;
+    const amount = Math.max(minimumPayablePaise, amountAfterCode - walletCoinsRedeemed * 100);
 
     const id = crypto.randomUUID();
     const receipt = `plus_${id.replaceAll('-', '').slice(0, 26)}`;

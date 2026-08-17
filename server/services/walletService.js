@@ -2,9 +2,7 @@ const { desc, eq } = require('drizzle-orm');
 
 const { db, walletLedgerEntries, wallets } = require('../db');
 const { createHttpError } = require('./httpError');
-
-const MIN_PAYABLE_AMOUNT_PAISE = 100;
-const LEDGER_HISTORY_LIMIT = 50;
+const { getNumberSetting } = require('./applicationSettingService');
 
 async function ensureWallet(dbOrTx, userId) {
     const [existing] = await dbOrTx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
@@ -37,18 +35,20 @@ async function getWalletSummary(userId) {
     };
 }
 
-async function listLedgerHistory(userId, limit = LEDGER_HISTORY_LIMIT) {
+async function listLedgerHistory(userId, limit) {
+    const resolvedLimit = limit ?? await getNumberSetting('wallet.ledgerHistoryLimit');
     return db
         .select()
         .from(walletLedgerEntries)
         .where(eq(walletLedgerEntries.userId, userId))
         .orderBy(desc(walletLedgerEntries.createdAt))
-        .limit(limit);
+        .limit(resolvedLimit);
 }
 
-async function previewRedeemCoins(userId, amountAfterCodePaise) {
+async function previewRedeemCoins(userId, amountAfterCodePaise, minimumPayablePaise) {
+    const resolvedMinimum = minimumPayablePaise ?? await getNumberSetting('payment.minimumPayablePaise');
     const wallet = await ensureWallet(db, userId);
-    const maxCoinsByAmount = Math.floor((amountAfterCodePaise - MIN_PAYABLE_AMOUNT_PAISE) / 100);
+    const maxCoinsByAmount = Math.floor((amountAfterCodePaise - resolvedMinimum) / 100);
     if (maxCoinsByAmount <= 0) {
         return 0;
     }
@@ -115,7 +115,6 @@ async function consumeBankedFreeMonth(tx, userId, now = new Date()) {
 }
 
 module.exports = {
-    MIN_PAYABLE_AMOUNT_PAISE,
     ensureWallet,
     lockWallet,
     getWalletSummary,

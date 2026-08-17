@@ -22,7 +22,7 @@ const createTestSchema = z.object({
     questionMode: z.enum(['unused', 'incorrect', 'marked', 'omitted', 'correct']).default('unused'),
     subjects: z.array(z.string().trim().min(1)).default([]),
     systems: z.array(z.string().trim().min(1)).default([]),
-    questionCount: z.number().int().min(1).max(85),
+    questionCount: z.number().int().min(1).max(1000),
 });
 
 const answerSchema = z.union([

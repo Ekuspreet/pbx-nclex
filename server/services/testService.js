@@ -9,6 +9,7 @@ const {
 const { createHttpError } = require('./httpError');
 const { getQuestionsForPlan } = require('./freeTrialQuestionService');
 const { getPlan } = require('./planCatalog');
+const { getNumberSetting } = require('./applicationSettingService');
 const {
     buildStatsFromQuestions,
     filterQuestions,
@@ -16,8 +17,6 @@ const {
     isAnswerCorrect,
     toClientQuestion,
 } = require('./questionBankService');
-
-const MS_PER_TIMED_QUESTION = 124000;
 
 function shuffle(items) {
     const next = [...items];
@@ -85,6 +84,13 @@ async function requireUserTest(userId, testId, database = db, lock = false) {
 }
 
 async function createTest(userId, config, planName = 'free') {
+    const [maxQuestions, secondsPerQuestion] = await Promise.all([
+        getNumberSetting('test.maxQuestions'),
+        getNumberSetting('test.secondsPerQuestion'),
+    ]);
+    if (config.questionCount > maxQuestions) {
+        throw createHttpError(422, `A test can contain at most ${maxQuestions} questions.`);
+    }
     const plan = await getPlan(planName);
     const existingTests = await listUserTests(userId);
     const availableQuestions = filterQuestions(await db.select().from(questions), {})
@@ -117,7 +123,7 @@ async function createTest(userId, config, planName = 'free') {
 
     const selectedQuestions = shuffle(matchingQuestions).slice(0, config.questionCount);
     const now = new Date();
-    const remainingMs = config.timed ? config.questionCount * MS_PER_TIMED_QUESTION : null;
+    const remainingMs = config.timed ? config.questionCount * secondsPerQuestion * 1000 : null;
     const expiresAt = config.timed ? new Date(now.getTime() + remainingMs) : null;
 
     return db.transaction(async (tx) => {
@@ -677,7 +683,10 @@ async function listUserTests(userId) {
 }
 
 async function getDashboard(userId, planName = 'free') {
-    const plan = await getPlan(planName);
+    const [plan, maxTestQuestions] = await Promise.all([
+        getPlan(planName),
+        getNumberSetting('test.maxQuestions'),
+    ]);
     const availableQuestionRows = filterQuestions(await db.select().from(questions), {})
         .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
     const allQuestionRows = await getQuestionsForPlan(availableQuestionRows, plan.key);
@@ -751,6 +760,7 @@ async function getDashboard(userId, planName = 'free') {
         });
 
     return {
+        maxTestQuestions,
         totalQuestions,
         usedQuestions: latestQuestionStats.usedQuestions,
         presentedQuestions: latestQuestionStats.presentedQuestions,
@@ -768,7 +778,6 @@ async function getDashboard(userId, planName = 'free') {
 }
 
 module.exports = {
-    MS_PER_TIMED_QUESTION,
     createTest,
     getDashboard,
     getTestPayload,

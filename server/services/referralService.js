@@ -6,16 +6,15 @@ const { createHttpError } = require('./httpError');
 const { computeStackedWindow } = require('./subscriptionStacking');
 const { getReferralProgramSettings, getTierForOrdinal } = require('./referralTierCatalog');
 const walletService = require('./walletService');
+const { getNumberSetting, getStringSetting } = require('./applicationSettingService');
 
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const CODE_LENGTH = 8;
 const MAX_ATTEMPTS = 5;
 const UNIQUE_VIOLATION = '23505';
 
-function generateCode() {
+function generateCode(alphabet, length) {
     let code = '';
-    for (let i = 0; i < CODE_LENGTH; i += 1) {
-        code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
+    for (let i = 0; i < length; i += 1) {
+        code += alphabet[crypto.randomInt(alphabet.length)];
     }
     return code;
 }
@@ -36,11 +35,16 @@ async function getOrCreateReferralCode(userId) {
         return existing;
     }
 
+    const [alphabet, length] = await Promise.all([
+        getStringSetting('referral.codeAlphabet'),
+        getNumberSetting('referral.codeLength'),
+    ]);
+
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
         try {
             const [created] = await db
                 .insert(discountCodes)
-                .values({ code: generateCode(), type: 'referral', ownerUserId: userId })
+                .values({ code: generateCode(alphabet, length), type: 'referral', ownerUserId: userId })
                 .returning();
             return created;
         } catch (error) {

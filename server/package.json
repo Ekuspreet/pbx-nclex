@@ -12,6 +12,8 @@
         "db:seed:referrals": "node scripts/seedReferralProgram.js",
         "db:seed:plan-questions": "node scripts/seedPlanQuestions.js",
         "db:seed:content": "node scripts/seedContent.js",
+        "db:seed:settings": "node scripts/seedApplicationSettings.js",
+        "db:seed": "npm run db:seed:plans && npm run db:seed:referrals && npm run db:seed:plan-questions && npm run db:seed:content && npm run db:seed:settings",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:push": "drizzle-kit push",

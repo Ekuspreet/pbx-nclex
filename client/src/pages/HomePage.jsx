@@ -461,7 +461,8 @@ function CreateTestPageContent() {
     correct: filterStats.filter((row) => matchesMode(row, 'correct') && matchesSubjects(row) && matchesSystems(row)).length,
   }
   const matchingQuestionCount = filterStats.filter((row) => matchesMode(row) && matchesSubjects(row) && matchesSystems(row)).length
-  const maxQuestions = Math.min(matchingQuestionCount, 85)
+  const configuredMaxQuestions = statsQuery.data.maxTestQuestions || 85
+  const maxQuestions = Math.min(matchingQuestionCount, configuredMaxQuestions)
 
   return (
     <form className="grid gap-8" onSubmit={submit}>
@@ -505,7 +506,7 @@ function CreateTestPageContent() {
               onChange={() => setForm((current) => ({
                 ...current,
                 questionMode: value,
-                questionCount: Math.min(Math.max(modeCounts[value], 1), asCount(current.questionCount), 85),
+                questionCount: Math.min(Math.max(modeCounts[value], 1), asCount(current.questionCount), configuredMaxQuestions),
               }))}
             />
           ))}
@@ -534,7 +535,7 @@ function CreateTestPageContent() {
           <span className="label-text whitespace-nowrap font-bold">No. of Questions</span>
           <input
             className="input input-bordered input-sm w-full text-center"
-            max="85"
+            max={configuredMaxQuestions}
             min="1"
             type="number"
             value={form.questionCount}
@@ -548,16 +549,16 @@ function CreateTestPageContent() {
 
               const requestedCount = Number(value)
               if (requestedCount > matchingQuestionCount) {
-                setForm({ ...form, questionCount: Math.min(matchingQuestionCount, 85) })
+                setForm({ ...form, questionCount: Math.min(matchingQuestionCount, configuredMaxQuestions) })
                 setQuestionAvailabilityMessage(`Total available questions with selected pair are ${matchingQuestionCount}`)
                 return
               }
 
               setQuestionAvailabilityMessage('')
-              setForm({ ...form, questionCount: Math.min(requestedCount, 85) })
+              setForm({ ...form, questionCount: Math.min(requestedCount, configuredMaxQuestions) })
             }}
           />
-          <span className="flex items-baseline gap-1.5 text-caption text-muted sm:whitespace-nowrap">Max allowed <strong className="text-base-content">85</strong></span>
+          <span className="flex items-baseline gap-1.5 text-caption text-muted sm:whitespace-nowrap">Max allowed <strong className="text-base-content">{configuredMaxQuestions}</strong></span>
           {questionAvailabilityMessage ? <span className="text-xs font-medium text-warning sm:col-span-3">{questionAvailabilityMessage}</span> : null}
         </label>
         <button className="btn btn-primary min-w-40" disabled={createTestMutation.isPending || maxQuestions === 0 || asCount(form.questionCount) > maxQuestions} type="submit">
