@@ -49,13 +49,27 @@ const AdminContext = React.createContext(null)
 
 const adminNavGroups = [
   {
-    label: 'Admin',
+    label: 'Overview',
     items: [
       { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'dashboard', end: true },
       { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
       { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
       { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { href: `${ADMIN_ROUTE}/subscriptions`, label: 'Subscriptions', icon: 'workspace_premium' },
+      { href: `${ADMIN_ROUTE}/payments`, label: 'Payments', icon: 'payments' },
+      { href: `${ADMIN_ROUTE}/referrals`, label: 'Referrals', icon: 'group_add' },
       { href: `${ADMIN_ROUTE}/promo-codes`, label: 'Promo codes', icon: 'sell' },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { href: `${ADMIN_ROUTE}/configuration`, label: 'Plans & settings', icon: 'tune' },
     ],
   },
 ]
@@ -160,6 +174,9 @@ const PAGE_SIZE_OPTIONS = [50, 100, 200]
 function getEndpointKey(endpoint) {
   if (endpoint.includes('users')) return 'users'
   if (endpoint.includes('questions')) return 'questions'
+  if (endpoint.includes('subscriptions')) return 'subscriptions'
+  if (endpoint.includes('payments')) return 'payments'
+  if (endpoint.includes('referrals')) return 'referrals'
   return 'feedback'
 }
 
@@ -373,25 +390,87 @@ function DashboardPage() {
       {dashboardQuery.isPending ? <InlineLoading /> : null}
       {dashboardQuery.isError ? <div className="alert alert-error"><span>{dashboardQuery.error.message}</span></div> : null}
       {dashboardQuery.data ? (
-        <section className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Users" value={dashboardQuery.data.users} />
-          <StatCard label="Questions" value={dashboardQuery.data.questions} />
-          <StatCard label="Open feedback" value={dashboardQuery.data.openFeedback} />
-        </section>
+        <div className="grid gap-6">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard icon="group" label="Users" value={dashboardQuery.data.metrics.totalUsers} detail={`${dashboardQuery.data.metrics.verifiedUsers} verified`} />
+            <StatCard icon="workspace_premium" label="Active subscriptions" value={dashboardQuery.data.metrics.activeSubscriptions} detail={`${dashboardQuery.data.metrics.paidOrders} paid orders`} />
+            <StatCard icon="payments" label="Revenue collected" value={formatMoney(dashboardQuery.data.metrics.revenuePaise)} detail="Captured orders" />
+            <StatCard icon="group_add" label="Referral conversions" value={dashboardQuery.data.metrics.referrals} detail={`${dashboardQuery.data.metrics.walletCoins} wallet coins outstanding`} />
+            <StatCard icon="quiz" label="Question bank" value={dashboardQuery.data.metrics.totalQuestions} detail="Available questions" />
+            <StatCard icon="sell" label="Active promos" value={dashboardQuery.data.metrics.activePromos} detail="Currently enabled" />
+            <StatCard icon="feedback" label="Open feedback" value={dashboardQuery.data.metrics.openFeedback} detail="Needs attention" />
+            <StatCard icon="redeem" label="Banked free months" value={dashboardQuery.data.metrics.bankedFreeMonths} detail="Across user wallets" />
+          </section>
+          <section className="surface-raised overflow-hidden rounded-xl border">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div><h2 className="text-lg font-black">Recent payment activity</h2><p className="text-sm text-base-content/60">Latest orders across all users</p></div>
+              <Link className="btn btn-outline btn-sm" to={`${ADMIN_ROUTE}/payments`}>View all</Link>
+            </div>
+            <div className="overflow-x-auto"><table className="table"><thead><tr><th>User</th><th>Amount</th><th>Status</th><th>Created</th></tr></thead><tbody>
+              {dashboardQuery.data.recentPayments.map((payment) => <tr key={payment.id}><td><strong>{payment.userName}</strong><br /><span className="text-xs text-base-content/60">{payment.userEmail}</span></td><td>{formatMoney(payment.amount, payment.currency)}</td><td><StatusBadge value={payment.status} /></td><td>{formatDate(payment.createdAt)}</td></tr>)}
+              {dashboardQuery.data.recentPayments.length === 0 ? <tr><td className="text-center" colSpan="4">No payment activity yet.</td></tr> : null}
+            </tbody></table></div>
+          </section>
+        </div>
       ) : null}
     </Layout>
   )
 }
 
-function StatCard({ label, value }) {
+function StatCard({ detail, icon, label, value }) {
   return (
-    <article className="card surface-raised">
-      <div className="card-body">
-        <p className="text-sm font-bold text-base-content/70">{label}</p>
-        <strong className="text-4xl font-black">{value}</strong>
+    <article className="card surface-raised border">
+      <div className="card-body gap-2 p-5">
+        <div className="flex items-center justify-between"><p className="text-sm font-bold text-base-content/70">{label}</p><span className="material-symbols-outlined rounded-lg bg-primary/10 p-2 text-primary">{icon}</span></div>
+        <strong className="text-3xl font-black">{value}</strong>
+        <p className="text-xs text-base-content/55">{detail}</p>
       </div>
     </article>
   )
+}
+
+function formatMoney(paise, currency = 'INR') {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 2 }).format((paise || 0) / 100)
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString() : '—'
+}
+
+function StatusBadge({ value }) {
+  const positive = ['paid', 'active', 'published'].includes(String(value).toLowerCase())
+  return <span className={`badge ${positive ? 'badge-primary' : 'badge-outline'}`}>{value}</span>
+}
+
+function ConfigurationPage() {
+  const configKey = queryKeys.adminResource('/admin/configuration')
+  const configQuery = useQuery({ queryKey: configKey, queryFn: ({ signal }) => adminRequest('/admin/configuration', { signal }) })
+
+  return (
+    <Layout title="Plans & settings">
+      {configQuery.isPending ? <InlineLoading /> : null}
+      {configQuery.isError ? <div className="alert alert-error"><span>{configQuery.error.message}</span></div> : null}
+      {configQuery.data ? <div className="grid gap-6">
+        <ConfigSection icon="workspace_premium" title="Subscription plans" subtitle="Pricing, access duration and entitlement limits">
+          <table className="table"><thead><tr><th>Plan</th><th>Price</th><th>Duration</th><th>Entitlements</th><th>Status</th></tr></thead><tbody>{configQuery.data.plans.map((plan) => <tr key={plan.key}><td><strong>{plan.name}</strong><br /><span className="text-xs text-base-content/50">{plan.key}</span></td><td>{formatMoney(plan.amount, plan.currency)}</td><td>{plan.durationDays ? `${plan.durationDays} days` : 'Ongoing'}</td><td><code className="text-xs">{JSON.stringify(plan.limits)}</code></td><td><StatusBadge value={plan.active ? 'active' : 'inactive'} /></td></tr>)}</tbody></table>
+        </ConfigSection>
+        <ConfigSection icon="tune" title="Product settings" subtitle="Runtime limits and operational defaults stored in the database">
+          <table className="table"><thead><tr><th>Setting</th><th>Value</th><th>Description</th><th>Updated</th></tr></thead><tbody>{configQuery.data.settings.map((setting) => <tr key={setting.key}><td className="font-mono text-xs font-bold">{setting.key}</td><td><code>{JSON.stringify(setting.value)}</code></td><td>{setting.description}</td><td>{formatDate(setting.updatedAt)}</td></tr>)}</tbody></table>
+        </ConfigSection>
+        <ConfigSection icon="group_add" title="Referral policy" subtitle="Reward tiers and free-month rules">
+          <table className="table"><thead><tr><th>Referral range</th><th>Coins per referral</th><th>Free months</th><th>Status</th></tr></thead><tbody>{configQuery.data.referralTiers.map((tier) => <tr key={tier.minOrdinal}><td>{tier.minOrdinal}–{tier.maxOrdinal ?? '∞'}</td><td>{tier.coinsPerReferral}</td><td>{tier.freeMonthsPerReferral}</td><td><StatusBadge value={tier.active ? 'active' : 'inactive'} /></td></tr>)}</tbody></table>
+          <div className="border-t p-4 text-sm">Free-month duration: <strong>{configQuery.data.referralProgram[0]?.freeMonthDurationDays ?? '—'} days</strong></div>
+        </ConfigSection>
+        <ConfigSection icon="policy" title="Policies & site content" subtitle="Published legal and marketing content versions">
+          <table className="table"><thead><tr><th>Content key</th><th>Group</th><th>Version</th><th>Status</th><th>Effective</th><th>Updated</th><th>Content</th></tr></thead><tbody>{configQuery.data.content.map((entry) => <tr key={entry.key}><td className="font-bold">{entry.key}</td><td>{entry.group}</td><td>v{entry.version}</td><td><StatusBadge value={entry.published ? 'published' : 'draft'} /></td><td>{formatDate(entry.effectiveAt)}</td><td>{formatDate(entry.updatedAt)}</td><td><details className="dropdown dropdown-end"><summary className="btn btn-ghost btn-xs">Inspect</summary><pre className="dropdown-content z-10 mt-2 max-h-80 w-96 overflow-auto rounded-lg border bg-base-100 p-4 text-xs shadow-xl">{JSON.stringify(entry.content, null, 2)}</pre></details></td></tr>)}</tbody></table>
+        </ConfigSection>
+      </div> : null}
+    </Layout>
+  )
+}
+
+function ConfigSection({ children, icon, subtitle, title }) {
+  return <section className="surface-raised overflow-x-auto rounded-xl border"><header className="flex items-center gap-3 border-b p-5"><span className="material-symbols-outlined text-primary">{icon}</span><div><h2 className="font-black">{title}</h2><p className="text-sm text-base-content/60">{subtitle}</p></div></header>{children}</section>
 }
 
 function FeedbackDetailPage() {
@@ -645,6 +724,30 @@ function AdminRoutes() {
         )}
       />
       <Route path="questions/:questionId/preview" element={<Protected><QuestionPreviewPage /></Protected>} />
+      <Route path="subscriptions" element={<Protected><DataPage title="Subscriptions" endpoint="/admin/subscriptions" columns={[
+        { label: 'Subscriber', render: (row) => <><strong>{row.userName}</strong><br /><span className="text-xs text-base-content/60">{row.userEmail}</span></> },
+        { label: 'Plan', render: (row) => row.plan },
+        { label: 'Source', render: (row) => <span className="badge badge-outline">{row.source.replaceAll('_', ' ')}</span> },
+        { label: 'Starts', render: (row) => formatDate(row.startsAt) },
+        { label: 'Expires', render: (row) => formatDate(row.expiresAt) },
+        { label: 'Status', render: (row) => <StatusBadge value={new Date(row.expiresAt) > new Date() ? 'active' : 'expired'} /> },
+      ]} /></Protected>} />
+      <Route path="payments" element={<Protected><DataPage title="Payments" endpoint="/admin/payments" columns={[
+        { label: 'Customer', render: (row) => <><strong>{row.userName}</strong><br /><span className="text-xs text-base-content/60">{row.userEmail}</span></> },
+        { label: 'Amount', render: (row) => formatMoney(row.amount, row.currency) },
+        { label: 'Status', render: (row) => <StatusBadge value={row.status} /> },
+        { label: 'Discount', render: (row) => formatMoney(row.discountAmount, row.currency) },
+        { label: 'Wallet coins', render: (row) => row.walletCoinsRedeemed },
+        { label: 'Created', render: (row) => formatDate(row.createdAt) },
+      ]} /></Protected>} />
+      <Route path="referrals" element={<Protected><DataPage title="Referral conversions" endpoint="/admin/referrals" columns={[
+        { label: 'Referrer', render: (row) => <><strong>{row.referrerName}</strong><br /><span className="text-xs text-base-content/60">{row.referrerEmail}</span></> },
+        { label: 'Referred user', render: (row) => <><strong>{row.refereeName}</strong><br /><span className="text-xs text-base-content/60">{row.refereeEmail}</span></> },
+        { label: 'Referral #', render: (row) => row.ordinal },
+        { label: 'Coins awarded', render: (row) => row.coinsAwarded },
+        { label: 'Free months', render: (row) => row.freeMonthsAwarded },
+        { label: 'Converted', render: (row) => formatDate(row.createdAt) },
+      ]} /></Protected>} />
       <Route
         path="feedback"
         element={(
@@ -666,6 +769,7 @@ function AdminRoutes() {
       />
       <Route path="feedback/:feedbackId" element={<Protected><FeedbackDetailPage /></Protected>} />
       <Route path="promo-codes" element={<Protected><PromoCodesPage /></Protected>} />
+      <Route path="configuration" element={<Protected><ConfigurationPage /></Protected>} />
       <Route path="*" element={<Navigate replace to={ADMIN_ROUTE} />} />
     </Routes>
   )
