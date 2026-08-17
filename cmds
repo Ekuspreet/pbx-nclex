@@ -1,60 +1,186 @@
-rebuld client and server 
+# PBX Nursing Command Reference
 
+Run these commands from the repository root unless a section says otherwise.
 
-podman rm -f pbx-nursing-client
-podman rm -f pbx-nursing-server
-podman-compose -f podman-compose.yaml up -d --build server client
+## Podman Compose
 
+### Start or rebuild the complete application
 
-build clinet only
-podman rm -f pbx-nursing-client
-podman-compose -f podman-compose.yaml up -d --build client
+```bash
+podman-compose -f podman-compose.yaml up -d --build
+```
 
+### Rebuild only the server
 
-build server
-podman rm -f pbx-nursing-server
+```bash
 podman-compose -f podman-compose.yaml up -d --build server
+```
 
-podman-compose -f podman-compose.yaml exec server npm run questions:import
+### Rebuild only the client
 
+```bash
+podman-compose -f podman-compose.yaml up -d --build client
+```
+
+### Delete the client and server and restart 
+```bash
+podman rm -f pbx-nursing-client pbx-nursing-server
+podman-compose -f podman-compose.yaml up -d --build server client
+```
+
+### Show container status
+
+```bash
+podman-compose -f podman-compose.yaml ps
+```
+
+### Follow server logs
+
+```bash
+podman-compose -f podman-compose.yaml logs -f server
+```
+
+### Follow logs for every service
+
+```bash
+podman-compose -f podman-compose.yaml logs -f
+```
+
+### Stop the application
+
+```bash
+podman-compose -f podman-compose.yaml down
+```
+
+This stops and removes the application containers but preserves the PostgreSQL volume.
+
+## Database migrations and seed data
+
+The PostgreSQL and server services load their environment from `server/.env`.
+
+### Apply pending migrations
+
+```bash
 podman-compose -f podman-compose.yaml exec server npm run db:migrate
+```
 
+### Insert or update all seed data
 
-create or update a mock paid user with effectively infinite premium access
-replace the email argument with the account to grant access
+```bash
+podman-compose -f podman-compose.yaml exec server npm run db:seed
+```
 
+### Seed one category
+
+```bash
+podman-compose -f podman-compose.yaml exec server npm run db:seed:plans
+podman-compose -f podman-compose.yaml exec server npm run db:seed:referrals
+podman-compose -f podman-compose.yaml exec server npm run db:seed:plan-questions
+podman-compose -f podman-compose.yaml exec server npm run db:seed:content
+podman-compose -f podman-compose.yaml exec server npm run db:seed:settings
+```
+
+### Import the question bank
+
+```bash
+podman-compose -f podman-compose.yaml exec server npm run questions:import
+```
+
+### Generate a migration during local development
+
+Run this from the server directory after changing a database model:
+
+```bash
+cd server
+npm run db:generate
+```
+
+Commit the generated SQL migration and snapshot files.
+
+## PostgreSQL inspection
+
+### Open `psql` inside the PostgreSQL container
+
+```bash
+podman-compose -f podman-compose.yaml exec postgres sh -lc 'psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB"'
+```
+
+### List every table
+
+```bash
+podman-compose -f podman-compose.yaml exec postgres sh -lc 'psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --command="\\dt"'
+```
+
+### Describe a table
+
+Replace `plans` with the required table name.
+
+```bash
+podman-compose -f podman-compose.yaml exec postgres sh -lc 'psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --command="\\d+ plans"'
+```
+
+### Connect using a locally installed `psql`
+
+This loads connection values from `server/.env`:
+
+```bash
+set -a; . ./server/.env; set +a; PGPASSWORD="$POSTGRES_PASSWORD" psql --host="${POSTGRES_HOST:-127.0.0.1}" --port="${POSTGRES_PORT:-5432}" --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"
+```
+
+### List tables using a locally installed `psql`
+
+```bash
+set -a; . ./server/.env; set +a; PGPASSWORD="$POSTGRES_PASSWORD" psql --host="${POSTGRES_HOST:-127.0.0.1}" --port="${POSTGRES_PORT:-5432}" --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --command='\dt'
+```
+
+## Administrative scripts
+
+### Grant effectively unlimited paid access to a test user
+
+Replace the example email address:
+
+```bash
 podman-compose -f podman-compose.yaml exec server npm run user:mock-paid -- user@example.com
+```
 
+### Create a promo code
 
-secure copy the contents of a local folder into a folder on the server
-replace the source path, SSH user, server address, and destination path
-the trailing /. copies the contents instead of nesting the source folder
+`--max-uses` and `--expires-at` are optional.
 
+```bash
+podman-compose -f podman-compose.yaml exec server npm run promo:create -- --code=SAVE20 --discount=20 --max-uses=100 --expires-at=2026-12-31T23:59:59+05:30
+```
+
+## Remote database migration
+
+Replace the example connection string. This builds a temporary server image and applies pending migrations to the specified PostgreSQL database.
+
+```bash
+podman-compose -f podman-compose.yaml build server
+podman-compose -f podman-compose.yaml run --rm -e DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require' server npm run db:migrate
+```
+
+## Copy files to a remote server
+
+Replace the source path, SSH user, host, and destination. The trailing `/.` copies the directory contents rather than nesting the directory itself.
+
+```bash
 scp -r /path/to/local-folder/. SSH_USER@SERVER_HOST:/path/to/server-folder/
+```
 
+## Destructive development commands
 
+### Reset the Podman PostgreSQL database
 
-open psql using the user and password from postgres/.env
-set -a; . ./postgres/.env; set +a; PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+> **Warning:** This permanently deletes every table and all data in the database identified by `POSTGRES_DB`. It preserves the Podman volume and does not affect other databases. Run it only from the intended project host.
 
-
-only during developement
-// delete the entire db
-
-
-REMOTE PODMAN DATABASE RESET (DESTRUCTIVE)
-
-WARNING: This permanently deletes every table and all data in the database named by
-POSTGRES_DB inside the pbx-nursing-postgres container. Run this on the remote host
-from the project directory. It does not delete the Podman volume or other databases.
-
+```bash
 podman exec pbx-nursing-postgres sh -lc 'dropdb --force --if-exists --username "$POSTGRES_USER" "$POSTGRES_DB" && createdb --username "$POSTGRES_USER" --owner "$POSTGRES_USER" "$POSTGRES_DB"'
+```
 
+Reapply the schema and seed data after resetting:
 
-SET UP DATABASE SCHEMA FROM A DATABASE CONNECTION STRING
-
-Replace the example value with the complete PostgreSQL connection string. Quoting the
-value prevents shell expansion of special characters in the URL. This applies every
-pending Drizzle migration to that database.
-
-podman-compose -f podman-compose.yaml build server && podman-compose -f podman-compose.yaml run --rm -e DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require' server npm run db:migrate
+```bash
+podman-compose -f podman-compose.yaml exec server npm run db:migrate
+podman-compose -f podman-compose.yaml exec server npm run db:seed
+```
