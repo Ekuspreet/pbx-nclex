@@ -2,7 +2,6 @@ const { and, desc, eq, gt, sql } = require('drizzle-orm');
 const { alias } = require('drizzle-orm/pg-core');
 
 const {
-    applicationSettings,
     contentEntries,
     db,
     discountCodes,
@@ -118,14 +117,13 @@ async function listReferrals(req, res, next) {
 
 async function configuration(req, res, next) {
     try {
-        const [planRows, settingRows, contentRows, tierRows, programRows] = await Promise.all([
+        const [planRows, contentRows, tierRows, programRows] = await Promise.all([
             db.select().from(plans).orderBy(plans.sortOrder),
-            db.select().from(applicationSettings).orderBy(applicationSettings.key),
             db.select().from(contentEntries).where(eq(contentEntries.group, 'legal')).orderBy(contentEntries.key),
             db.select().from(referralRewardTiers).orderBy(referralRewardTiers.minOrdinal),
             db.select().from(referralProgramSettings).orderBy(referralProgramSettings.key),
         ]);
-        res.status(200).json({ plans: planRows, settings: settingRows, policies: contentRows, referralTiers: tierRows, referralProgram: programRows });
+        res.status(200).json({ plans: planRows, policies: contentRows, referralTiers: tierRows, referralProgram: programRows });
     } catch (error) { next(error); }
 }
 
