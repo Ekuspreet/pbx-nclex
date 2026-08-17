@@ -89,7 +89,7 @@ async function createTest(userId, config, planName = 'free') {
     const existingTests = await listUserTests(userId);
     const availableQuestions = filterQuestions(await db.select().from(questions), {})
         .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
-    const allQuestions = getQuestionsForPlan(availableQuestions, plan.key);
+    const allQuestions = await getQuestionsForPlan(availableQuestions, plan.key);
     const userTests = existingTests;
     const testIds = userTests.map((test) => test.id);
     const historyRows = testIds.length > 0
@@ -680,7 +680,7 @@ async function getDashboard(userId, planName = 'free') {
     const plan = await getPlan(planName);
     const availableQuestionRows = filterQuestions(await db.select().from(questions), {})
         .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
-    const allQuestionRows = getQuestionsForPlan(availableQuestionRows, plan.key);
+    const allQuestionRows = await getQuestionsForPlan(availableQuestionRows, plan.key);
     const totalQuestions = allQuestionRows.length;
     const userTests = await listUserTests(userId);
     const testIds = userTests.map((test) => test.id);

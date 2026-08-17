@@ -23,6 +23,7 @@ const { walletLedgerTypeEnum, walletLedgerEntries } = require('./walletLedgerEnt
 const { referralConversions } = require('./referralConversion');
 const { plans } = require('./plan');
 const { referralProgramSettings, referralRewardTiers } = require('./referralRewardTier');
+const { planQuestions } = require('./planQuestion');
 
 module.exports = {
     questions,
@@ -55,4 +56,5 @@ module.exports = {
     plans,
     referralProgramSettings,
     referralRewardTiers,
+    planQuestions,
 };

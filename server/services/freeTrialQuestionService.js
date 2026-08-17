@@ -1,15 +1,16 @@
-const freeTrialQuestionIds = require('../questions/free-trial-question-ids.json');
+const { eq } = require('drizzle-orm');
 
-const FREE_TRIAL_QUESTION_IDS = Object.freeze([...freeTrialQuestionIds]);
-const freeTrialQuestionIdSet = new Set(FREE_TRIAL_QUESTION_IDS);
+const { db, planQuestions } = require('../db');
 
-function getQuestionsForPlan(questionRows, planName = 'free') {
+async function getQuestionsForPlan(questionRows, planName = 'free', database = db) {
     if (planName === 'plus') return questionRows;
+    if (questionRows.length === 0) return [];
 
-    return questionRows.filter((question) => freeTrialQuestionIdSet.has(question.questionId));
+    const allowedRows = await database.select({ questionId: planQuestions.questionId })
+        .from(planQuestions)
+        .where(eq(planQuestions.planKey, planName));
+    const allowedIds = new Set(allowedRows.map((row) => row.questionId));
+    return questionRows.filter((question) => allowedIds.has(question.id));
 }
 
-module.exports = {
-    FREE_TRIAL_QUESTION_IDS,
-    getQuestionsForPlan,
-};
+module.exports = { getQuestionsForPlan };

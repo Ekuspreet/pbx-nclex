@@ -43,6 +43,13 @@
       "when": 1786945359273,
       "tag": "0005_odd_chimera",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786945454146,
+      "tag": "0006_big_nemesis",
+      "breakpoints": true
     }
   ]
 }
