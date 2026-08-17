@@ -13,7 +13,15 @@ function SidebarIcon({ name }) {
     'aria-hidden': true,
   }
 
-  if (name === 'dashboard') return <svg {...common}><rect height="7" width="7" x="3" y="3" /><rect height="7" width="7" x="14" y="3" /><rect height="7" width="7" x="14" y="14" /><rect height="7" width="7" x="3" y="14" /></svg>
+  if (name === 'dashboard' || name === 'space_dashboard') return <svg {...common}><rect height="7" width="7" x="3" y="3" /><rect height="7" width="7" x="14" y="3" /><rect height="7" width="7" x="14" y="14" /><rect height="7" width="7" x="3" y="14" /></svg>
+  if (name === 'manage_accounts') return <svg {...common}><circle cx="9" cy="8" r="4" /><path d="M3 21v-2a6 6 0 0 1 6-6c1.5 0 2.9.55 4 1.45" /><circle cx="18" cy="17" r="3" /><path d="m20.2 19.2 1.3 1.3M15.8 14.8l-1.3-1.3M20.2 14.8l1.3-1.3M15.8 19.2l-1.3 1.3" /></svg>
+  if (name === 'quiz') return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.25c-.7.35-1.1.85-1.1 1.75" /><path d="M12 17h.01" /></svg>
+  if (name === 'forum') return <svg {...common}><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M8 8h8M8 12h5" /></svg>
+  if (name === 'card_membership') return <svg {...common}><rect x="3" y="4" width="18" height="14" rx="2" /><path d="M3 9h18M8 18v3l4-2 4 2v-3" /></svg>
+  if (name === 'receipt_long') return <svg {...common}><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" /><path d="M9 7h6M9 11h6M9 15h4" /></svg>
+  if (name === 'person_add') return <svg {...common}><circle cx="9" cy="8" r="4" /><path d="M3 21v-2a6 6 0 0 1 10.2-4.3M18 13v8M14 17h8" /></svg>
+  if (name === 'local_offer') return <svg {...common}><path d="M20.6 13.6 11 23l-9-9V3h11z" transform="scale(.86) translate(1.5 1)" /><circle cx="8" cy="8" r="1.5" /></svg>
+  if (name === 'settings') return <svg {...common}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.6-1H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6V3h4v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.6 1h.1v4H21a1.7 1.7 0 0 0-1.6 1z" /></svg>
   if (name === 'analytics') return <svg {...common}><path d="M18 20V10M12 20V4M6 20v-6" /></svg>
   if (name === 'add_circle') return <svg {...common}><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="16" /><line x1="8" x2="16" y1="12" y2="12" /></svg>
   if (name === 'description') return <svg {...common}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" x2="8" y1="13" y2="13" /><line x1="16" x2="8" y1="17" y2="17" /></svg>
