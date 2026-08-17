@@ -8,6 +8,7 @@
         "dev": "nodemon index.js",
         "questions:import": "node scripts/importQuestions.js",
         "user:mock-paid": "node scripts/createMockPaidUser.js",
+        "db:seed:plans": "node scripts/seedPlans.js",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:push": "drizzle-kit push",

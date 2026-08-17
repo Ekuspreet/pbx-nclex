@@ -86,7 +86,7 @@ async function getNote(userId, noteId) {
 
 async function createNote(userId, payload, planName = 'free') {
     await assertTestBelongsToUser(userId, payload.testId);
-    const limit = getPlan(planName).limits.notes;
+    const limit = (await getPlan(planName)).limits.notes;
     if (limit !== null) {
         const [row] = await db.select({ count: sql`count(*)::int` }).from(notes).where(eq(notes.userId, userId));
         if ((row?.count || 0) >= limit) throw createHttpError(403, `The Free plan allows ${limit} notes. Upgrade to Plus for unlimited notes.`);

@@ -1,20 +1,24 @@
-const PLAN_CATALOG = Object.freeze({
-    free: Object.freeze({
-        key: 'free', name: 'Free', amount: 0, currency: 'INR', durationDays: null,
-        limits: Object.freeze({ tests: null, questions: 75, notes: 10, highlights: 15 }),
-    }),
-    plus: Object.freeze({
-        key: 'plus', name: 'PBX Nursing Plus', amount: 89900, currency: 'INR', durationDays: 60,
-        limits: Object.freeze({ tests: null, questions: null, notes: null, highlights: null }),
-    }),
-});
+const { asc, eq } = require('drizzle-orm');
 
-function getPlan(planName) {
-    return PLAN_CATALOG[planName] || PLAN_CATALOG.free;
+const { db, plans } = require('../db');
+
+async function findPlan(planName, database = db) {
+    const [plan] = await database.select().from(plans).where(eq(plans.key, planName)).limit(1);
+    return plan || null;
 }
 
-function getPublicPlans() {
-    return Object.values(PLAN_CATALOG).map((plan) => ({ ...plan, limits: { ...plan.limits } }));
+async function getPlan(planName, database = db) {
+    const plan = await findPlan(planName, database);
+    if (plan) return plan;
+    if (planName === 'free') throw new Error('The Free plan is not configured. Run npm run db:seed:plans.');
+    return getPlan('free', database);
 }
 
-module.exports = { getPlan, getPublicPlans, PLAN_CATALOG };
+async function getPublicPlans(database = db) {
+    return database.select({ key: plans.key, name: plans.name, amount: plans.amount, currency: plans.currency, durationDays: plans.durationDays, limits: plans.limits })
+        .from(plans)
+        .where(eq(plans.active, true))
+        .orderBy(asc(plans.sortOrder));
+}
+
+module.exports = { findPlan, getPlan, getPublicPlans };

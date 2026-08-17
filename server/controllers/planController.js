@@ -1,7 +1,11 @@
 const { getPublicPlans } = require('../services/planCatalog');
 
-function index(req, res) {
-    res.status(200).json({ plans: getPublicPlans() });
+async function index(req, res, next) {
+    try {
+        res.status(200).json({ plans: await getPublicPlans() });
+    } catch (error) {
+        next(error);
+    }
 }
 
 module.exports = { index };

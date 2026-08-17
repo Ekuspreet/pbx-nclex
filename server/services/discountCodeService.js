@@ -2,7 +2,7 @@ const { eq } = require('drizzle-orm');
 
 const { db, discountCodes, subscriptions } = require('../db');
 const { createHttpError } = require('./httpError');
-const { PLAN_CATALOG } = require('./planCatalog');
+const { findPlan } = require('./planCatalog');
 
 async function hasAnySubscription(userId) {
     const [row] = await db.select({ id: subscriptions.id }).from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
@@ -17,7 +17,7 @@ async function hasPaidSubscription(userId) {
 }
 
 async function resolveCodeForCheckout(userId, rawCode, planName, now = new Date()) {
-    const plan = PLAN_CATALOG[planName];
+    const plan = await findPlan(planName);
     if (!plan) {
         throw createHttpError(400, 'Unknown subscription plan.', 'PAYMENT_UNKNOWN_PLAN');
     }

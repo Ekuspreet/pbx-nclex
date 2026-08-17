@@ -21,6 +21,7 @@ const { discountCodeTypeEnum, discountCodes } = require('./discountCode');
 const { wallets } = require('./wallet');
 const { walletLedgerTypeEnum, walletLedgerEntries } = require('./walletLedgerEntry');
 const { referralConversions } = require('./referralConversion');
+const { plans } = require('./plan');
 
 module.exports = {
     questions,
@@ -50,4 +51,5 @@ module.exports = {
     walletLedgerTypeEnum,
     walletLedgerEntries,
     referralConversions,
+    plans,
 };

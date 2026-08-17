@@ -4,7 +4,7 @@ const Razorpay = require('razorpay');
 
 const { db, discountCodes, paymentOrders, paymentWebhookEvents, subscriptions } = require('../db');
 const { env } = require('../env');
-const { PLAN_CATALOG } = require('./planCatalog');
+const { findPlan } = require('./planCatalog');
 const { resolveCodeForCheckout, incrementRedemptionCount } = require('./discountCodeService');
 const { MIN_PAYABLE_AMOUNT_PAISE, previewRedeemCoins, debitCoins } = require('./walletService');
 const { creditReferralConversion } = require('./referralService');
@@ -69,7 +69,7 @@ async function previewCode(userId, code, planName) {
 }
 
 async function createOrderForUser(userId, planName, { code, redeemCoins } = {}) {
-    const plan = PLAN_CATALOG[planName];
+    const plan = await findPlan(planName);
     if (!plan || plan.amount === 0) throw createPaymentError(400, 'Unknown subscription plan.', 'PAYMENT_UNKNOWN_PLAN');
 
     let discountCode = null;
@@ -155,7 +155,9 @@ async function fulfillOrder(tx, orderId, paymentId, now = new Date()) {
         return existing;
     }
 
-    const { startsAt, expiresAt } = await computeStackedWindow(tx, order.userId, PLAN_CATALOG[order.plan].durationDays, now);
+    const plan = await findPlan(order.plan, tx);
+    if (!plan) throw createPaymentError(409, 'The purchased plan is no longer configured.', 'PAYMENT_PLAN_NOT_CONFIGURED');
+    const { startsAt, expiresAt } = await computeStackedWindow(tx, order.userId, plan.durationDays, now);
     const [subscription] = await tx.insert(subscriptions).values({
         userId: order.userId,
         paymentOrderId: order.id,

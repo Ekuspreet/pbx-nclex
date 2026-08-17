@@ -74,7 +74,7 @@ async function listHighlights(userId, filters = {}) {
 
 async function createHighlight(userId, payload, planName = 'free') {
     await assertTestBelongsToUser(userId, payload.testId);
-    const limit = getPlan(planName).limits.highlights;
+    const limit = (await getPlan(planName)).limits.highlights;
     if (limit !== null) {
         const [row] = await db.select({ count: sql`count(*)::int` }).from(highlights).where(eq(highlights.userId, userId));
         if ((row?.count || 0) >= limit) throw createHttpError(403, `The Free plan allows ${limit} highlights. Upgrade to Plus for unlimited highlights.`);
@@ -136,7 +136,7 @@ async function replaceQuestionHighlights(userId, payload, planName = 'free') {
     const now = new Date();
 
     return db.transaction(async (tx) => {
-        const limit = getPlan(planName).limits.highlights;
+        const limit = (await getPlan(planName, tx)).limits.highlights;
         if (limit !== null) {
             const [row] = await tx.select({ count: sql`count(*)::int` }).from(highlights).where(eq(highlights.userId, userId));
             const [replaced] = await tx.select({ count: sql`count(*)::int` }).from(highlights).where(and(

@@ -85,7 +85,7 @@ async function requireUserTest(userId, testId, database = db, lock = false) {
 }
 
 async function createTest(userId, config, planName = 'free') {
-    const plan = getPlan(planName);
+    const plan = await getPlan(planName);
     const existingTests = await listUserTests(userId);
     const availableQuestions = filterQuestions(await db.select().from(questions), {})
         .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
@@ -677,7 +677,7 @@ async function listUserTests(userId) {
 }
 
 async function getDashboard(userId, planName = 'free') {
-    const plan = getPlan(planName);
+    const plan = await getPlan(planName);
     const availableQuestionRows = filterQuestions(await db.select().from(questions), {})
         .sort((a, b) => String(a.questionId).localeCompare(String(b.questionId), undefined, { numeric: true }));
     const allQuestionRows = getQuestionsForPlan(availableQuestionRows, plan.key);
