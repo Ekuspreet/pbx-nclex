@@ -3,13 +3,13 @@ import { pricing } from '../content/landing/index.js'
 import { getPlans } from '../services/studyAdapter.js'
 import { queryKeys } from '../services/queryKeys.js'
 
-function mergePlanCatalog(serverPlans) {
-  if (!serverPlans?.length) return pricing
+function mergePlanCatalog(serverPlans, basePricing) {
+  if (!serverPlans?.length) return basePricing
   const plus = serverPlans.find((plan) => plan.key === 'plus')
   return {
-    ...pricing,
-    note: plus ? `PBX Nursing Plus costs ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: plus.currency, maximumFractionDigits: 0 }).format(plus.amount / 100)} for ${plus.durationDays} days of digital educational access.` : pricing.note,
-    plans: pricing.plans.map((plan) => {
+    ...basePricing,
+    note: plus ? `PBX Nursing Plus costs ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: plus.currency, maximumFractionDigits: 0 }).format(plus.amount / 100)} for ${plus.durationDays} days of digital educational access.` : basePricing.note,
+    plans: basePricing.plans.map((plan) => {
       const serverPlan = serverPlans.find((candidate) => candidate.key === plan.key)
       if (!serverPlan) return plan
       const features = serverPlan.key === 'free' ? [
@@ -29,11 +29,11 @@ function mergePlanCatalog(serverPlans) {
   }
 }
 
-export function usePlanCatalog() {
+export function usePlanCatalog(basePricing = pricing) {
   const plansQuery = useQuery({
     queryKey: queryKeys.plans,
     queryFn: getPlans,
     staleTime: 5 * 60_000,
   })
-  return plansQuery.data ? mergePlanCatalog(plansQuery.data.plans) : pricing
+  return plansQuery.data ? mergePlanCatalog(plansQuery.data.plans, basePricing) : basePricing
 }

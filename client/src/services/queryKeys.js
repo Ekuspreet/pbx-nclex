@@ -7,6 +7,8 @@ export const queryKeys = {
   exhibit: (url) => ['exhibits', url],
   session: ['session'],
   plans: ['plans'],
+  content: (key) => ['content', key],
+  contentGroup: (group) => ['content', 'group', group],
   dashboard: ['dashboard'],
   performance: ['dashboard', 'performance'],
   questionStats: ['questions', 'stats'],

@@ -14,11 +14,13 @@ const referralRoutes = require('./referralRoutes');
 const walletRoutes = require('./walletRoutes');
 const authenticate = require('../middleware/authenticate');
 const planController = require('../controllers/planController');
+const contentRoutes = require('./contentRoutes');
 
 const router = express.Router();
 
 router.get('/health', healthController);
 router.get('/plans', planController.index);
+router.use('/content', contentRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.get('/dashboard', authenticate, dashboardController);

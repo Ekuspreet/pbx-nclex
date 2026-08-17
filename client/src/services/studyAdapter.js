@@ -8,6 +8,14 @@ export function getPlans(options = {}) {
   return apiRequest('/plans', { ...options, skipAuthRefresh: true })
 }
 
+export function getContent(key, options = {}) {
+  return apiRequest(`/content/${encodeURIComponent(key)}`, { ...options, skipAuthRefresh: true })
+}
+
+export function getContentGroup(group, options = {}) {
+  return apiRequest(`/content?group=${encodeURIComponent(group)}`, { ...options, skipAuthRefresh: true })
+}
+
 export function getPaymentHistory(options = {}) {
   return apiRequest('/payments/history', options)
 }

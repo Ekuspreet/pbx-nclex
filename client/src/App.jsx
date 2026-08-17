@@ -5,11 +5,6 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext.jsx'
 import { GuestRoute, ProtectedRoute } from './auth/AuthRoutes.jsx'
 import { ADMIN_ROUTE } from './admin/adminRoute.js'
-import cancellationPolicy from './policy/cancellation.md?raw'
-import disclaimerPolicy from './policy/disclaimer.md?raw'
-import privacyPolicy from './policy/privacy.md?raw'
-import refundPolicy from './policy/return_and_refund.md?raw'
-import termsPolicy from './policy/terms_and_conditions.md?raw'
 import { queryKeys } from './services/queryKeys.js'
 
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'))
@@ -102,11 +97,11 @@ function App() {
           <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/about-us" element={<AboutPage />} />
-          <Route path="/terms-and-conditions" element={<PolicyPage operatorNotice source={termsPolicy} />} />
-          <Route path="/privacy-policy" element={<PolicyPage source={privacyPolicy} />} />
-          <Route path="/return-refund-policy" element={<PolicyPage source={refundPolicy} />} />
-          <Route path="/cancellation-policy" element={<PolicyPage source={cancellationPolicy} />} />
-          <Route path="/disclaimer" element={<PolicyPage source={disclaimerPolicy} />} />
+          <Route path="/terms-and-conditions" element={<PolicyPage contentKey="legal.terms" operatorNotice />} />
+          <Route path="/privacy-policy" element={<PolicyPage contentKey="legal.privacy" />} />
+          <Route path="/return-refund-policy" element={<PolicyPage contentKey="legal.refunds" />} />
+          <Route path="/cancellation-policy" element={<PolicyPage contentKey="legal.cancellation" />} />
+          <Route path="/disclaimer" element={<PolicyPage contentKey="legal.disclaimer" />} />
           <Route path={`${ADMIN_ROUTE}/*`} element={<AdminApp />} />
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<AuthPage mode="login" />} />

@@ -5,7 +5,7 @@ import SectionHeading from './SectionHeading.jsx'
 import { usePlanCatalog } from '../../hooks/usePlanCatalog.js'
 
 function PricingSection({ pricing: fallbackPricing }) {
-  const pricing = usePlanCatalog() || fallbackPricing
+  const pricing = usePlanCatalog(fallbackPricing)
   return (
     <section className="surface-muted py-section" id={pricing.id}>
       <div className="container-page">

@@ -24,6 +24,7 @@ const { referralConversions } = require('./referralConversion');
 const { plans } = require('./plan');
 const { referralProgramSettings, referralRewardTiers } = require('./referralRewardTier');
 const { planQuestions } = require('./planQuestion');
+const { contentEntries } = require('./contentEntry');
 
 module.exports = {
     questions,
@@ -57,4 +58,5 @@ module.exports = {
     referralProgramSettings,
     referralRewardTiers,
     planQuestions,
+    contentEntries,
 };
