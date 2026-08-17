@@ -1,5 +1,9 @@
+const path = require('path');
+const dotenv = require('dotenv');
 const { Pool } = require('pg');
 const { drizzle } = require('drizzle-orm/node-postgres');
+
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const { validateDatabaseEnv } = require('../env/database');
 const schema = require('../models');
