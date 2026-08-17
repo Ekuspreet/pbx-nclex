@@ -13,7 +13,7 @@ function InlineText({ children }) {
   ))
 }
 
-function MarkdownContent({ source }) {
+export function MarkdownContent({ source }) {
   const blocks = []
   const lines = String(source).split(/\r?\n/)
   let list = []

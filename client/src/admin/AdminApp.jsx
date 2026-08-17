@@ -5,6 +5,8 @@ import { brand } from '../content/landing/index.js'
 import { apiRequest } from '../services/apiClient.js'
 import DrawerShell, { AccountIdentity, AccountPanel } from '../ui/layout/DrawerShell.jsx'
 import QuestionReviewModal, { QuestionReviewScreen } from '../ui/questionnaire/QuestionReviewModal.jsx'
+import Modal from '../features/test/components/Modal.jsx'
+import { MarkdownContent } from '../pages/PolicyPage.jsx'
 import { ADMIN_ROUTE } from './adminRoute.js'
 import { queryKeys } from '../services/queryKeys.js'
 
@@ -445,6 +447,7 @@ function StatusBadge({ value }) {
 function ConfigurationPage() {
   const configKey = queryKeys.adminResource('/admin/configuration')
   const configQuery = useQuery({ queryKey: configKey, queryFn: ({ signal }) => adminRequest('/admin/configuration', { signal }) })
+  const [selectedPolicy, setSelectedPolicy] = useState(null)
 
   return (
     <Layout title="Plans & settings">
@@ -462,8 +465,9 @@ function ConfigurationPage() {
           <div className="border-t p-4 text-sm">Free-month duration: <strong>{configQuery.data.referralProgram[0]?.freeMonthDurationDays ?? '—'} days</strong></div>
         </ConfigSection>
         <ConfigSection icon="policy" title="Policies" subtitle="Published legal policy versions">
-          <table className="table"><thead><tr><th>Policy</th><th>Version</th><th>Status</th><th>Effective</th><th>Updated</th><th>Content</th></tr></thead><tbody>{configQuery.data.policies.map((entry) => <tr key={entry.key}><td className="font-bold">{entry.key.replace('legal.', '').replaceAll('_', ' ')}</td><td>v{entry.version}</td><td><StatusBadge value={entry.published ? 'published' : 'draft'} /></td><td>{formatDate(entry.effectiveAt)}</td><td>{formatDate(entry.updatedAt)}</td><td><details className="dropdown dropdown-end"><summary className="btn btn-ghost btn-xs">Inspect</summary><pre className="dropdown-content z-10 mt-2 max-h-80 w-96 overflow-auto rounded-lg border bg-base-100 p-4 text-xs shadow-xl">{entry.content.markdown || JSON.stringify(entry.content, null, 2)}</pre></details></td></tr>)}</tbody></table>
+          <table className="table"><thead><tr><th>Policy</th><th>Version</th><th>Status</th><th>Effective</th><th>Updated</th><th>Content</th></tr></thead><tbody>{configQuery.data.policies.map((entry) => <tr key={entry.key}><td className="font-bold capitalize">{entry.key.replace('legal.', '').replaceAll('_', ' ')}</td><td>v{entry.version}</td><td><StatusBadge value={entry.published ? 'published' : 'draft'} /></td><td>{formatDate(entry.effectiveAt)}</td><td>{formatDate(entry.updatedAt)}</td><td><button className="btn btn-outline btn-xs" type="button" onClick={() => setSelectedPolicy(entry)}>Inspect</button></td></tr>)}</tbody></table>
         </ConfigSection>
+        {selectedPolicy ? <Modal title={selectedPolicy.key.replace('legal.', '').replaceAll('_', ' ')} onClose={() => setSelectedPolicy(null)}><article className="border-t border-base-300 pt-2"><MarkdownContent source={selectedPolicy.content.markdown || ''} /></article></Modal> : null}
       </div> : null}
     </Layout>
   )
