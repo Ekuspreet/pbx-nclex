@@ -121,11 +121,11 @@ async function configuration(req, res, next) {
         const [planRows, settingRows, contentRows, tierRows, programRows] = await Promise.all([
             db.select().from(plans).orderBy(plans.sortOrder),
             db.select().from(applicationSettings).orderBy(applicationSettings.key),
-            db.select().from(contentEntries).orderBy(contentEntries.group, contentEntries.key),
+            db.select().from(contentEntries).where(eq(contentEntries.group, 'legal')).orderBy(contentEntries.key),
             db.select().from(referralRewardTiers).orderBy(referralRewardTiers.minOrdinal),
             db.select().from(referralProgramSettings).orderBy(referralProgramSettings.key),
         ]);
-        res.status(200).json({ plans: planRows, settings: settingRows, content: contentRows, referralTiers: tierRows, referralProgram: programRows });
+        res.status(200).json({ plans: planRows, settings: settingRows, policies: contentRows, referralTiers: tierRows, referralProgram: programRows });
     } catch (error) { next(error); }
 }
 
