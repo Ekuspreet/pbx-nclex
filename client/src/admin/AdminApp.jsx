@@ -51,25 +51,25 @@ const adminNavGroups = [
   {
     label: 'Overview',
     items: [
-      { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'dashboard', end: true },
-      { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
+      { href: ADMIN_ROUTE, label: 'Dashboard', icon: 'space_dashboard', end: true },
+      { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'manage_accounts' },
       { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
-      { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
+      { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'forum' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { href: `${ADMIN_ROUTE}/subscriptions`, label: 'Subscriptions', icon: 'workspace_premium' },
-      { href: `${ADMIN_ROUTE}/payments`, label: 'Payments', icon: 'payments' },
-      { href: `${ADMIN_ROUTE}/referrals`, label: 'Referrals', icon: 'group_add' },
-      { href: `${ADMIN_ROUTE}/promo-codes`, label: 'Promo codes', icon: 'sell' },
+      { href: `${ADMIN_ROUTE}/subscriptions`, label: 'Subscriptions', icon: 'card_membership' },
+      { href: `${ADMIN_ROUTE}/payments`, label: 'Payments', icon: 'receipt_long' },
+      { href: `${ADMIN_ROUTE}/referrals`, label: 'Referrals', icon: 'person_add' },
+      { href: `${ADMIN_ROUTE}/promo-codes`, label: 'Promo codes', icon: 'local_offer' },
     ],
   },
   {
     label: 'Configuration',
     items: [
-      { href: `${ADMIN_ROUTE}/configuration`, label: 'Plans & settings', icon: 'tune' },
+      { href: `${ADMIN_ROUTE}/configuration`, label: 'Plans & settings', icon: 'settings' },
     ],
   },
 ]
