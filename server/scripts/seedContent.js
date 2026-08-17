@@ -4,7 +4,7 @@ const { ne } = require('drizzle-orm');
 
 const { closeDb, contentEntries, db } = require('../db');
 
-const clientRoot = path.resolve(__dirname, '../../client/src');
+const policyRoot = path.resolve(__dirname, '../policy');
 const legalFiles = {
     'legal.terms': 'terms_and_conditions.md',
     'legal.privacy': 'privacy.md',
@@ -16,7 +16,7 @@ const legalFiles = {
 async function buildEntries() {
     const entries = [];
     for (const [key, filename] of Object.entries(legalFiles)) {
-        entries.push({ key, group: 'legal', content: { markdown: await fs.readFile(path.join(clientRoot, 'policy', filename), 'utf8') }, effectiveAt: new Date() });
+        entries.push({ key, group: 'legal', content: { markdown: await fs.readFile(path.join(policyRoot, filename), 'utf8') }, effectiveAt: new Date() });
     }
     return entries;
 }
