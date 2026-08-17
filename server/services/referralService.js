@@ -4,7 +4,7 @@ const { and, eq } = require('drizzle-orm');
 const { db, discountCodes, referralConversions, subscriptions } = require('../db');
 const { createHttpError } = require('./httpError');
 const { computeStackedWindow } = require('./subscriptionStacking');
-const { FREE_MONTH_DURATION_DAYS, getTierForOrdinal } = require('./referralTierCatalog');
+const { getReferralProgramSettings, getTierForOrdinal } = require('./referralTierCatalog');
 const walletService = require('./walletService');
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -78,7 +78,7 @@ async function getReferralSummary(userId) {
 async function creditReferralConversion(tx, { referrerUserId, refereeUserId, discountCodeId, paymentOrderId }, now = new Date()) {
     const wallet = await walletService.lockWallet(tx, referrerUserId);
     const ordinal = wallet.successfulReferralCount + 1;
-    const tier = getTierForOrdinal(ordinal);
+    const tier = await getTierForOrdinal(ordinal, tx);
 
     const [conversion] = await tx
         .insert(referralConversions)
@@ -113,7 +113,8 @@ async function activateBankedFreeMonth(userId) {
         await walletService.consumeBankedFreeMonth(tx, userId);
 
         const now = new Date();
-        const { startsAt, expiresAt } = await computeStackedWindow(tx, userId, FREE_MONTH_DURATION_DAYS, now);
+        const settings = await getReferralProgramSettings(tx);
+        const { startsAt, expiresAt } = await computeStackedWindow(tx, userId, settings.freeMonthDurationDays, now);
 
         const [subscription] = await tx.insert(subscriptions).values({
             userId,

@@ -9,6 +9,7 @@
         "questions:import": "node scripts/importQuestions.js",
         "user:mock-paid": "node scripts/createMockPaidUser.js",
         "db:seed:plans": "node scripts/seedPlans.js",
+        "db:seed:referrals": "node scripts/seedReferralProgram.js",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "drizzle-kit migrate",
         "db:push": "drizzle-kit push",

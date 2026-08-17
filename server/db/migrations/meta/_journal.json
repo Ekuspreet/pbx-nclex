@@ -36,6 +36,13 @@
       "when": 1786945271808,
       "tag": "0004_broad_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786945359273,
+      "tag": "0005_odd_chimera",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,7 @@ const { wallets } = require('./wallet');
 const { walletLedgerTypeEnum, walletLedgerEntries } = require('./walletLedgerEntry');
 const { referralConversions } = require('./referralConversion');
 const { plans } = require('./plan');
+const { referralProgramSettings, referralRewardTiers } = require('./referralRewardTier');
 
 module.exports = {
     questions,
@@ -52,4 +53,6 @@ module.exports = {
     walletLedgerEntries,
     referralConversions,
     plans,
+    referralProgramSettings,
+    referralRewardTiers,
 };
