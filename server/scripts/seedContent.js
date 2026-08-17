@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { pathToFileURL } = require('url');
+const { ne } = require('drizzle-orm');
 
 const { closeDb, contentEntries, db } = require('../db');
 
@@ -13,25 +13,8 @@ const legalFiles = {
     'legal.disclaimer': 'disclaimer.md',
 };
 
-async function importClientModule(relativePath) {
-    return import(pathToFileURL(path.join(clientRoot, relativePath)).href);
-}
-
 async function buildEntries() {
-    const [{ hero }, { features }, { pricing }, { callToAction }, { business }] = await Promise.all([
-        importClientModule('content/landing/hero.js'),
-        importClientModule('content/landing/features.js'),
-        importClientModule('content/landing/pricing.js'),
-        importClientModule('content/landing/callToAction.js'),
-        importClientModule('content/business.js'),
-    ]);
-    const entries = [
-        { key: 'site.hero', group: 'site', content: hero },
-        { key: 'site.features', group: 'site', content: features },
-        { key: 'site.pricing', group: 'site', content: pricing },
-        { key: 'site.callToAction', group: 'site', content: callToAction },
-        { key: 'site.business', group: 'site', content: business },
-    ];
+    const entries = [];
     for (const [key, filename] of Object.entries(legalFiles)) {
         entries.push({ key, group: 'legal', content: { markdown: await fs.readFile(path.join(clientRoot, 'policy', filename), 'utf8') }, effectiveAt: new Date() });
     }
@@ -40,13 +23,14 @@ async function buildEntries() {
 
 async function seedContent() {
     const entries = await buildEntries();
+    await db.delete(contentEntries).where(ne(contentEntries.group, 'legal'));
     for (const entry of entries) {
         await db.insert(contentEntries).values(entry).onConflictDoUpdate({
             target: contentEntries.key,
             set: { group: entry.group, content: entry.content, published: true, effectiveAt: entry.effectiveAt || null, updatedAt: new Date() },
         });
     }
-    console.log(`Seeded ${entries.length} content entries.`);
+    console.log(`Seeded ${entries.length} legal policy entries and removed non-policy content.`);
 }
 
 seedContent().then(closeDb).catch(async (error) => {

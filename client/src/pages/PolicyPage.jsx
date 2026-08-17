@@ -50,19 +50,17 @@ export function MarkdownContent({ source }) {
 
 function PolicyPage({ contentKey, operatorNotice = false }) {
   const policyQuery = useQuery({ queryKey: queryKeys.content(contentKey), queryFn: ({ signal }) => getContent(contentKey, { signal }) })
-  const businessQuery = useQuery({ queryKey: queryKeys.content('site.business'), queryFn: ({ signal }) => getContent('site.business', { signal }) })
-  const currentBusiness = businessQuery.data?.content || business
   return (
     <AppShell>
       <main className="surface-muted py-12 md:py-16">
         <article className="container-page max-w-4xl rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm md:p-10">
-          {operatorNotice ? <div className="alert alert-info mb-7"><span>This website is operated by <strong>{currentBusiness.tradeName}</strong>.</span></div> : null}
+          {operatorNotice ? <div className="alert alert-info mb-7"><span>This website is operated by <strong>{business.tradeName}</strong>.</span></div> : null}
           {policyQuery.isPending ? <div className="grid min-h-48 place-items-center"><span className="loading loading-spinner loading-lg" /></div> : null}
           {policyQuery.isError ? <div className="alert alert-error"><span>{policyQuery.error.message}</span></div> : null}
           {policyQuery.data ? <MarkdownContent source={policyQuery.data.content.markdown} /> : null}
           <section className="mt-10 rounded-xl border border-base-300 bg-base-200 p-5">
             <h2 className="font-bold">Contact information</h2>
-            <p className="mt-2"><strong>Support:</strong> {currentBusiness.supportEmail}</p>
+            <p className="mt-2"><strong>Support:</strong> {business.supportEmail}</p>
           </section>
         </article>
       </main>

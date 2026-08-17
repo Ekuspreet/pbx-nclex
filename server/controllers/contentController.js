@@ -1,4 +1,4 @@
-const { getPublishedContent, listPublishedContent } = require('../services/contentService');
+const { getPublishedContent } = require('../services/contentService');
 
 async function show(req, res, next) {
     try {
@@ -9,12 +9,4 @@ async function show(req, res, next) {
     }
 }
 
-async function index(req, res, next) {
-    try {
-        res.status(200).json({ content: await listPublishedContent(req.query.group) });
-    } catch (error) {
-        next(error);
-    }
-}
-
-module.exports = { index, show };
+module.exports = { show };

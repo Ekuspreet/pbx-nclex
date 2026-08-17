@@ -8,7 +8,6 @@ export const queryKeys = {
   session: ['session'],
   plans: ['plans'],
   content: (key) => ['content', key],
-  contentGroup: (group) => ['content', 'group', group],
   dashboard: ['dashboard'],
   performance: ['dashboard', 'performance'],
   questionStats: ['questions', 'stats'],
