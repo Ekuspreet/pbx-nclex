@@ -1,5 +1,5 @@
 const { sql } = require('drizzle-orm');
-const { boolean, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } = require('drizzle-orm/pg-core');
+const { boolean, check, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } = require('drizzle-orm/pg-core');
 
 const { users } = require('./user');
 
@@ -26,6 +26,9 @@ const discountCodes = pgTable(
             .on(table.ownerUserId)
             .where(sql`${table.type} = 'referral'`),
         ownerIdx: index('discount_codes_owner_user_id_idx').on(table.ownerUserId),
+        discountPercentCheck: check('discount_codes_discount_percent_check', sql`${table.discountPercent} between 1 and 100`),
+        redemptionCountCheck: check('discount_codes_redemption_count_check', sql`${table.redemptionCount} >= 0`),
+        maxRedemptionsCheck: check('discount_codes_max_redemptions_check', sql`${table.maxRedemptions} is null or ${table.maxRedemptions} > 0`),
     })
 );
 

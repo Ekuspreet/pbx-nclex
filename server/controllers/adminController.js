@@ -11,6 +11,7 @@ const {
     updateFeedbackStatus,
 } = require('../services/feedbackService');
 const { toClientQuestion } = require('../services/questionBankService');
+const { createPromoCode, listPromoCodes, updatePromoCode } = require('../services/adminPromoCodeService');
 
 function createPaginationPayload(total, { limit, offset }) {
     return {
@@ -203,6 +204,30 @@ async function dashboard(req, res, next) {
     }
 }
 
+async function promoCodes(req, res, next) {
+    try {
+        res.status(200).json({ promoCodes: await listPromoCodes() });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function createPromo(req, res, next) {
+    try {
+        res.status(201).json({ promoCode: await createPromoCode(req.body) });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function updatePromo(req, res, next) {
+    try {
+        res.status(200).json({ promoCode: await updatePromoCode(req.params.promoCodeId, req.body) });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     dashboard,
     feedbackStatus,
@@ -215,4 +240,7 @@ module.exports = {
     replyFeedback,
     showQuestion,
     showFeedback,
+    promoCodes,
+    createPromo,
+    updatePromo,
 };

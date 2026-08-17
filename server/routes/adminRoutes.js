@@ -11,6 +11,9 @@ const {
     questionIdParamSchema,
     replyFeedbackSchema,
     updateFeedbackStatusSchema,
+    createPromoCodeSchema,
+    promoCodeIdParamSchema,
+    updatePromoCodeSchema,
 } = require('../validators');
 
 const router = express.Router();
@@ -26,5 +29,8 @@ router.get('/feedback', authenticateAdmin, validate({ query: paginationQuerySche
 router.get('/feedback/:feedbackId', authenticateAdmin, validate({ params: feedbackIdParamSchema }), adminController.showFeedback);
 router.post('/feedback/:feedbackId/reply', authenticateAdmin, validate({ params: feedbackIdParamSchema, body: replyFeedbackSchema }), adminController.replyFeedback);
 router.patch('/feedback/:feedbackId/status', authenticateAdmin, validate({ params: feedbackIdParamSchema, body: updateFeedbackStatusSchema }), adminController.feedbackStatus);
+router.get('/promo-codes', authenticateAdmin, adminController.promoCodes);
+router.post('/promo-codes', authenticateAdmin, validate({ body: createPromoCodeSchema }), adminController.createPromo);
+router.patch('/promo-codes/:promoCodeId', authenticateAdmin, validate({ params: promoCodeIdParamSchema, body: updatePromoCodeSchema }), adminController.updatePromo);
 
 module.exports = router;

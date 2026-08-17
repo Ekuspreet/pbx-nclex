@@ -66,6 +66,10 @@ async function incrementRedemptionCount(tx, discountCodeId) {
         return;
     }
 
+    if (discountCode.maxRedemptions !== null && discountCode.redemptionCount >= discountCode.maxRedemptions) {
+        throw createHttpError(409, 'This code has already been fully redeemed.', 'DISCOUNT_CODE_LIMIT_REACHED');
+    }
+
     await tx.update(discountCodes)
         .set({ redemptionCount: discountCode.redemptionCount + 1, updatedAt: new Date() })
         .where(eq(discountCodes.id, discountCodeId));

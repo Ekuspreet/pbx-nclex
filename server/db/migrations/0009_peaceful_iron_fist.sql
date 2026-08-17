@@ -1,0 +1,3 @@
+ALTER TABLE "discount_codes" ADD CONSTRAINT "discount_codes_discount_percent_check" CHECK ("discount_codes"."discount_percent" between 1 and 100);--> statement-breakpoint
+ALTER TABLE "discount_codes" ADD CONSTRAINT "discount_codes_redemption_count_check" CHECK ("discount_codes"."redemption_count" >= 0);--> statement-breakpoint
+ALTER TABLE "discount_codes" ADD CONSTRAINT "discount_codes_max_redemptions_check" CHECK ("discount_codes"."max_redemptions" is null or "discount_codes"."max_redemptions" > 0);

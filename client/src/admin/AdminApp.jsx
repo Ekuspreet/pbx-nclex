@@ -55,6 +55,7 @@ const adminNavGroups = [
       { href: `${ADMIN_ROUTE}/users`, label: 'Users', icon: 'group' },
       { href: `${ADMIN_ROUTE}/questions`, label: 'Questions', icon: 'quiz' },
       { href: `${ADMIN_ROUTE}/feedback`, label: 'Feedback', icon: 'feedback' },
+      { href: `${ADMIN_ROUTE}/promo-codes`, label: 'Promo codes', icon: 'sell' },
     ],
   },
 ]
@@ -468,6 +469,99 @@ function FeedbackDetailPage() {
   )
 }
 
+function PromoCodesPage() {
+  const queryClient = useQueryClient()
+  const promoKey = queryKeys.adminResource('/admin/promo-codes')
+  const promoQuery = useQuery({ queryKey: promoKey, queryFn: ({ signal }) => adminRequest('/admin/promo-codes', { signal }) })
+  const createMutation = useMutation({ mutationFn: (body) => adminRequest('/admin/promo-codes', { method: 'POST', body }) })
+  const updateMutation = useMutation({ mutationFn: ({ id, body }) => adminRequest(`/admin/promo-codes/${id}`, { method: 'PATCH', body }) })
+  const [form, setForm] = useState({ code: '', discountPercent: 20, maxRedemptions: '', expiresAt: '', active: true })
+  const [message, setMessage] = useState('')
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: promoKey })
+  const submit = async (event) => {
+    event.preventDefault()
+    setMessage('')
+    try {
+      await createMutation.mutateAsync({
+        code: form.code,
+        discountPercent: Number(form.discountPercent),
+        maxRedemptions: form.maxRedemptions === '' ? null : Number(form.maxRedemptions),
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+        active: form.active,
+      })
+      setForm({ code: '', discountPercent: 20, maxRedemptions: '', expiresAt: '', active: true })
+      setMessage('Promo code created.')
+      await refresh()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  const setActive = async (promoCode) => {
+    setMessage('')
+    try {
+      await updateMutation.mutateAsync({ id: promoCode.id, body: { active: !promoCode.active } })
+      await refresh()
+    } catch (error) {
+      setMessage(error.message)
+    }
+  }
+
+  return (
+    <Layout title="Promo codes">
+      <div className="grid gap-6">
+        <form className="surface-raised grid gap-4 rounded-xl border p-5 lg:grid-cols-5 lg:items-end" onSubmit={submit}>
+          <label className="form-control gap-2">
+            <span className="label-text font-bold">Code</span>
+            <input className="input input-bordered uppercase" maxLength="40" required value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} placeholder="SAVE20" />
+          </label>
+          <label className="form-control gap-2">
+            <span className="label-text font-bold">Discount %</span>
+            <input className="input input-bordered" min="1" max="100" required type="number" value={form.discountPercent} onChange={(event) => setForm({ ...form, discountPercent: event.target.value })} />
+          </label>
+          <label className="form-control gap-2">
+            <span className="label-text font-bold">Maximum uses</span>
+            <input className="input input-bordered" min="1" type="number" value={form.maxRedemptions} onChange={(event) => setForm({ ...form, maxRedemptions: event.target.value })} placeholder="Unlimited" />
+          </label>
+          <label className="form-control gap-2">
+            <span className="label-text font-bold">Valid until</span>
+            <input className="input input-bordered" type="datetime-local" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} />
+          </label>
+          <button className="btn btn-primary" disabled={createMutation.isPending} type="submit">
+            {createMutation.isPending ? <span className="loading loading-spinner loading-sm" /> : null}
+            Add promo code
+          </button>
+          {message ? <p className="text-sm font-semibold lg:col-span-5">{message}</p> : null}
+        </form>
+
+        {promoQuery.isPending ? <InlineLoading /> : null}
+        {promoQuery.isError ? <div className="alert alert-error"><span>{promoQuery.error.message}</span></div> : null}
+        {promoQuery.data ? (
+          <section className="surface-raised overflow-x-auto rounded-xl border">
+            <table className="table">
+              <thead><tr><th>Code</th><th>Discount</th><th>Usage</th><th>Expires</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {promoQuery.data.promoCodes.map((promoCode) => (
+                  <tr key={promoCode.id}>
+                    <td className="font-black">{promoCode.code}</td>
+                    <td>{promoCode.discountPercent}%</td>
+                    <td>{promoCode.redemptionCount} / {promoCode.maxRedemptions ?? 'Unlimited'}</td>
+                    <td>{promoCode.expiresAt ? new Date(promoCode.expiresAt).toLocaleString() : 'No expiry'}</td>
+                    <td><span className={`badge ${promoCode.active ? 'badge-primary' : 'badge-ghost'}`}>{promoCode.active ? 'Active' : 'Inactive'}</span></td>
+                    <td className="text-right"><button className="btn btn-outline btn-sm" disabled={updateMutation.isPending} type="button" onClick={() => setActive(promoCode)}>{promoCode.active ? 'Disable' : 'Enable'}</button></td>
+                  </tr>
+                ))}
+                {promoQuery.data.promoCodes.length === 0 ? <tr><td colSpan="6" className="text-center text-base-content/60">No promo codes yet.</td></tr> : null}
+              </tbody>
+            </table>
+          </section>
+        ) : null}
+      </div>
+    </Layout>
+  )
+}
+
 function QuestionPreviewPage() {
   const { questionId } = useParams()
   const location = useLocation()
@@ -571,6 +665,7 @@ function AdminRoutes() {
         )}
       />
       <Route path="feedback/:feedbackId" element={<Protected><FeedbackDetailPage /></Protected>} />
+      <Route path="promo-codes" element={<Protected><PromoCodesPage /></Protected>} />
       <Route path="*" element={<Navigate replace to={ADMIN_ROUTE} />} />
     </Routes>
   )
